@@ -2,958 +2,738 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Evaluación de Karate</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
 <style>
-  :root {
-    --red:       #c0392b;
-    --red-dark:  #922b21;
-    --red-light: #f9ebea;
-    --gold:      #c49a1a;
-    --gold-light:#fef9e7;
-    --ink:       #1a1a1a;
-    --ink-2:     #444;
-    --ink-3:     #888;
-    --border:    #ddd;
-    --bg:        #f7f5f0;
-    --white:     #ffffff;
-    --green:     #1e8449;
-    --green-bg:  #eafaf1;
-    --orange:    #ca6f1e;
-    --orange-bg: #fef5e7;
-    --font-title: 'Noto Serif JP', serif;
-    --font-body:  'DM Sans', sans-serif;
-    --radius:     8px;
-    --shadow:     0 2px 8px rgba(0,0,0,0.08);
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root{
+  --red:#c0392b;--red-d:#922b21;--red-l:#fdf0ef;
+  --gold:#b8860b;--gold-l:#fef9e7;
+  --ink:#111;--ink2:#444;--ink3:#888;--ink4:#bbb;
+  --bg:#f4f2ed;--white:#fff;
+  --green:#1a7a3c;--green-bg:#eaf5ee;
+  --border:#ddd;--radius:10px;
+  --shadow:0 2px 12px rgba(0,0,0,0.07);
+  --font-h:'Noto Serif JP',serif;
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);min-height:100vh}
 
-  body {
-    font-family: var(--font-body);
-    background: var(--bg);
-    color: var(--ink);
-    min-height: 100vh;
-  }
+/* TOPBAR */
+.topbar{background:var(--ink);color:#fff;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;position:sticky;top:0;z-index:200}
+.brand{font-family:var(--font-h);font-size:.95rem;display:flex;align-items:center;gap:8px}
+.brand .k{color:#c9a84c;font-size:1.2rem}
+.tnav{display:flex;gap:4px}
+.tnav button{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:5px 13px;border-radius:6px;font-family:var(--font);font-size:.8rem;cursor:pointer;transition:.15s}
+.tnav button:hover,.tnav button.on{background:var(--red);border-color:var(--red);color:#fff}
 
-  /* ── TOPBAR ── */
-  .topbar {
-    background: var(--ink);
-    color: var(--white);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-    height: 56px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .topbar-brand {
-    font-family: var(--font-title);
-    font-size: 1rem;
-    letter-spacing: 0.04em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .topbar-brand span.kanji {
-    font-size: 1.3rem;
-    color: var(--gold);
-  }
-  .topbar-nav {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-  .topbar-nav button {
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.2);
-    color: rgba(255,255,255,0.85);
-    padding: 6px 14px;
-    border-radius: var(--radius);
-    font-family: var(--font-body);
-    font-size: 0.82rem;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-  .topbar-nav button:hover, .topbar-nav button.active {
-    background: var(--red);
-    border-color: var(--red);
-    color: var(--white);
-  }
+/* VIEWS */
+.view{display:none;padding:1.5rem;max-width:1100px;margin:0 auto}
+.view.on{display:block}
 
-  /* ── VIEWS ── */
-  .view { display: none; padding: 2rem; max-width: 1200px; margin: 0 auto; }
-  .view.active { display: block; }
+/* API SETUP BAR */
+.setup-bar{background:var(--gold-l);border:1px solid #e0c060;border-radius:var(--radius);padding:10px 14px;margin-bottom:1.25rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.84rem}
+.setup-bar input{flex:1;min-width:200px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:.84rem}
+.setup-bar button{background:var(--ink);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-family:var(--font);font-size:.82rem;cursor:pointer}
 
-  /* ── API CONFIG BANNER ── */
-  #api-banner {
-    background: var(--gold-light);
-    border: 1px solid var(--gold);
-    border-radius: var(--radius);
-    padding: 12px 16px;
-    margin-bottom: 1.5rem;
-    font-size: 0.85rem;
-    color: var(--ink-2);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  #api-banner input {
-    flex: 1;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 6px 10px;
-    font-size: 0.85rem;
-    font-family: var(--font-body);
-  }
-  #api-banner button {
-    background: var(--ink);
-    color: var(--white);
-    border: none;
-    border-radius: var(--radius);
-    padding: 6px 14px;
-    font-size: 0.82rem;
-    cursor: pointer;
-    font-family: var(--font-body);
-  }
+/* SECTION TITLE */
+.stitle{font-family:var(--font-h);font-size:1.15rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;color:var(--ink)}
+.stitle::after{content:'';flex:1;height:1px;background:var(--border)}
 
-  /* ── SECTION TITLE ── */
-  .section-title {
-    font-family: var(--font-title);
-    font-size: 1.3rem;
-    color: var(--ink);
-    margin-bottom: 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .section-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
+/* GRUPO TABS */
+.gtabs{display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border)}
+.gtab{padding:7px 20px;border:none;background:transparent;font-family:var(--font);font-size:.88rem;cursor:pointer;color:var(--ink3);border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s}
+.gtab.on{color:var(--red);border-bottom-color:var(--red);font-weight:600}
 
-  /* ── CARD ── */
-  .card {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.25rem 1.5rem;
-    box-shadow: var(--shadow);
-    margin-bottom: 1.5rem;
-  }
+/* CARD */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;box-shadow:var(--shadow);margin-bottom:1.25rem}
 
-  /* ── GRUPO TABS ── */
-  .grupo-tabs {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 1.25rem;
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 0;
-  }
-  .grupo-tab {
-    padding: 8px 22px;
-    border: none;
-    background: transparent;
-    font-family: var(--font-body);
-    font-size: 0.9rem;
-    cursor: pointer;
-    color: var(--ink-3);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: color 0.15s;
-  }
-  .grupo-tab.active {
-    color: var(--red);
-    border-bottom-color: var(--red);
-    font-weight: 600;
-  }
+/* BTN */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:7px;font-family:var(--font);font-size:.86rem;font-weight:500;cursor:pointer;border:none;transition:.15s}
+.btn:active{transform:scale(.97)}
+.btn-red{background:var(--red);color:#fff}
+.btn-red:hover{background:var(--red-d)}
+.btn-dark{background:var(--ink);color:#fff}
+.btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--border)}
+.btn-ghost:hover{background:#f0ede8}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem}
 
-  /* ── TABLE ── */
-  .tbl-wrap { overflow-x: auto; }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.88rem;
-  }
-  thead tr {
-    background: var(--ink);
-    color: var(--white);
-  }
-  thead th {
-    padding: 10px 12px;
-    text-align: left;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  tbody tr:nth-child(even) { background: #fafafa; }
-  tbody tr:hover { background: var(--red-light); }
-  tbody td {
-    padding: 8px 12px;
-    border-bottom: 1px solid #eee;
-    vertical-align: middle;
-  }
-  tbody td.num { font-variant-numeric: tabular-nums; }
+/* LOADER */
+.loader{text-align:center;padding:3rem;color:var(--ink3);font-size:.9rem}
+.err{color:var(--red)}
 
-  select.cal-sel {
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 0.84rem;
-    font-family: var(--font-body);
-    background: var(--white);
-    cursor: pointer;
-    min-width: 68px;
-  }
-  select.cal-sel:disabled { background: #f0f0f0; color: var(--ink-3); cursor: default; }
+/* DIVIDER */
+hr.div{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
 
-  .badge-prom {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    background: var(--gold-light);
-    color: var(--gold);
-  }
-  .badge-apr {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    background: var(--green-bg);
-    color: var(--green);
-  }
-  .badge-no {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    background: var(--red-light);
-    color: var(--red);
-  }
-  .badge-pend {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.82rem;
-    background: #f0f0f0;
-    color: var(--ink-3);
-  }
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--ink);color:#fff;padding:11px 18px;border-radius:8px;font-size:.86rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999;max-width:300px}
+#toast.on{opacity:1}
+#toast.err{background:var(--red)}
 
-  /* ── BTN ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 9px 20px;
-    border-radius: var(--radius);
-    font-family: var(--font-body);
-    font-size: 0.88rem;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: opacity 0.15s, transform 0.1s;
-  }
-  .btn:active { transform: scale(0.97); }
-  .btn-red    { background: var(--red); color: var(--white); }
-  .btn-dark   { background: var(--ink); color: var(--white); }
-  .btn-ghost  { background: transparent; color: var(--ink); border: 1px solid var(--border); }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* ── FICHAS DE ALUMNOS ── */
+.fichas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+.ficha{background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .2s}
+.ficha:hover{box-shadow:0 4px 20px rgba(0,0,0,0.12)}
+.ficha-head{background:var(--ink);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.ficha-head .fn{font-family:var(--font-h);font-size:1rem;font-weight:700}
+.ficha-head .fg{font-size:.78rem;color:rgba(255,255,255,.65);margin-top:2px}
+.ficha-num{background:rgba(255,255,255,.12);border-radius:6px;padding:4px 10px;font-size:.78rem;font-weight:600}
+.ficha-body{padding:14px 16px}
+.aspecto-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0ede8}
+.aspecto-row:last-child{border-bottom:none}
+.asp-label{font-size:.83rem;font-weight:500;color:var(--ink2);flex:1}
+.asp-btns{display:flex;gap:4px}
+.asp-btn{border:1.5px solid var(--border);background:var(--white);color:var(--ink3);border-radius:20px;padding:4px 10px;font-size:.78rem;font-weight:600;cursor:pointer;transition:.15s;font-family:var(--font)}
+.asp-btn:hover{border-color:var(--red);color:var(--red)}
+.asp-btn.sel{background:var(--red);border-color:var(--red);color:#fff}
+.asp-btn.dis{background:#f4f4f4;color:#ccc;cursor:default;border-color:#eee}
+.ficha-footer{background:#fafaf8;border-top:1px solid #f0ede8;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.prom-label{font-size:.78rem;color:var(--ink3);font-weight:500}
+.prom-val{font-family:var(--font-h);font-size:2rem;font-weight:700;color:var(--ink);line-height:1}
+.prom-val.good{color:var(--green)}
+.prom-val.bad{color:var(--red)}
+.prom-val.pend{color:var(--ink4)}
 
-  .btn-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 1rem;
-  }
+/* CONCENTRADOR TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+thead tr{background:var(--ink);color:#fff}
+thead th{padding:9px 11px;text-align:left;font-weight:500;white-space:nowrap}
+tbody tr:nth-child(even){background:#fafafa}
+tbody tr:hover{background:var(--red-l)}
+tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:600}
+.b-apr{background:var(--green-bg);color:var(--green)}
+.b-no{background:var(--red-l);color:var(--red)}
+.b-pend{background:#f0f0f0;color:var(--ink3)}
+.b-prom{background:var(--gold-l);color:var(--gold)}
+.stat-row{display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap}
+.stat-c{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 18px;flex:1;min-width:100px;text-align:center}
+.stat-c .sv{font-size:1.5rem;font-weight:700}
+.stat-c .sl{font-size:.75rem;color:var(--ink3);margin-top:2px}
 
-  /* ── CONFIG GRID ── */
-  .config-grid {
-    display: grid;
-    grid-template-columns: 140px repeat(5, 1fr);
-    gap: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    font-size: 0.85rem;
-  }
-  .config-grid .cg-header {
-    background: var(--ink);
-    color: var(--white);
-    padding: 8px 10px;
-    font-weight: 500;
-    text-align: center;
-    border-right: 1px solid rgba(255,255,255,0.1);
-  }
-  .config-grid .cg-header:last-child { border-right: none; }
-  .config-grid .cg-row-label {
-    background: var(--bg);
-    padding: 8px 10px;
-    font-weight: 500;
-    border-top: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-  }
-  .config-grid .cg-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-top: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    padding: 6px;
-  }
-  .config-grid .cg-cell:last-child { border-right: none; }
-  .config-grid input[type=checkbox] {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    accent-color: var(--red);
-  }
+/* CONFIG GRID */
+.cg{display:grid;grid-template-columns:130px repeat(5,1fr);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:.83rem}
+.cg-h{background:var(--ink);color:#fff;padding:7px 8px;text-align:center;font-weight:500;border-right:1px solid rgba(255,255,255,.1)}
+.cg-h:last-child{border-right:none}
+.cg-rl{background:#f8f6f1;padding:7px 10px;font-weight:500;border-top:1px solid var(--border);border-right:1px solid var(--border)}
+.cg-cell{display:flex;align-items:center;justify-content:center;border-top:1px solid var(--border);border-right:1px solid var(--border);padding:5px}
+.cg-cell:last-child{border-right:none}
+.cg-cell input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--red)}
 
-  /* ── TOAST ── */
-  #toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: var(--ink);
-    color: var(--white);
-    padding: 12px 20px;
-    border-radius: var(--radius);
-    font-size: 0.88rem;
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
-    z-index: 9999;
-    max-width: 320px;
-  }
-  #toast.show { opacity: 1; }
-  #toast.error { background: var(--red); }
-
-  /* ── LOADER ── */
-  .loader {
-    text-align: center;
-    padding: 3rem;
-    color: var(--ink-3);
-    font-size: 0.9rem;
-  }
-
-  /* ── DIVIDER ── */
-  .divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 1.5rem 0;
-  }
-
-  /* ── STAT ROW ── */
-  .stat-row {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 1.25rem;
-    flex-wrap: wrap;
-  }
-  .stat-card {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 20px;
-    flex: 1;
-    min-width: 120px;
-    text-align: center;
-  }
-  .stat-card .sc-val { font-size: 1.6rem; font-weight: 600; color: var(--ink); }
-  .stat-card .sc-lbl { font-size: 0.78rem; color: var(--ink-3); margin-top: 2px; }
-
-  /* ── RESPONSIVE ── */
-  @media(max-width:640px) {
-    .topbar { padding: 0 1rem; }
-    .view { padding: 1rem; }
-    .topbar-nav button { padding: 5px 8px; font-size: 0.75rem; }
-  }
+/* SINODALES TABLE */
+.sin-table{width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:1rem}
+.sin-table th{background:var(--bg);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--border)}
+.sin-table td{padding:7px 10px;border-bottom:1px solid #eee;vertical-align:middle}
+.sin-table input[type=text]{border:1px solid var(--border);border-radius:5px;padding:5px 8px;width:100%;font-family:var(--font);font-size:.84rem}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
 <header class="topbar">
-  <div class="topbar-brand">
-    <span class="kanji">空手</span>
-    Sistema de Evaluación de Karate
-  </div>
-  <nav class="topbar-nav" id="main-nav">
-    <button onclick="showView('v-sinodal')" id="nav-sinodal">Mi Hoja</button>
-    <button onclick="showView('v-principal')" id="nav-principal" style="display:none">Panel Principal</button>
-    <button onclick="showView('v-alumnos')" id="nav-alumnos" style="display:none">Alumnos</button>
-    <button onclick="showView('v-config')" id="nav-config" style="display:none">Configuración</button>
+  <div class="brand"><span class="k">空手</span>Sistema de Evaluación de Karate</div>
+  <nav class="tnav" id="tnav">
+    <button id="nb-eval" onclick="showView('v-eval')" class="on">Mi hoja</button>
+    <button id="nb-principal" onclick="showView('v-principal')" style="display:none">Principal</button>
+    <button id="nb-alumnos" onclick="showView('v-alumnos')" style="display:none">Alumnos</button>
+    <button id="nb-config" onclick="showView('v-config')" style="display:none">Configuración</button>
   </nav>
 </header>
 
-<!-- API BANNER -->
-<div id="api-banner" style="max-width:1200px;margin:1rem auto 0;padding-left:2rem;padding-right:2rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-  <span style="white-space:nowrap;font-weight:500">🔗 URL del Apps Script:</span>
-  <input id="api-url-input" type="text" placeholder="https://script.google.com/macros/s/AKfy.../exec" value=""/>
-  <button onclick="saveApiUrl()">Guardar</button>
-  <select id="rol-select" onchange="onRolChange()" style="border:1px solid #ccc;border-radius:6px;padding:6px 10px;font-size:0.85rem;font-family:var(--font-body)">
-    <option value="">-- Selecciona tu rol --</option>
-    <option value="0">Sinodal Principal</option>
-  </select>
-  <span id="rol-hint" style="font-size:0.8rem;color:#888">Los sinodales se cargan al conectar la URL</span>
+<!-- SETUP BAR (visible solo en vista eval para sinodales normales, y en config) -->
+<div style="max-width:1100px;margin:.75rem auto 0;padding:0 1.5rem" id="setup-zone">
+  <div class="setup-bar">
+    <span style="font-weight:600;white-space:nowrap">🔗 URL Apps Script:</span>
+    <input id="api-in" type="text" placeholder="https://script.google.com/macros/s/…/exec"/>
+    <button onclick="guardarUrl()">Conectar</button>
+    <span id="url-status" style="font-size:.8rem;color:var(--ink3)"></span>
+  </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     VIEW: SINODAL  (acceso para todos)
-══════════════════════════════════════════════ -->
-<section class="view active" id="v-sinodal">
-  <div id="sinodal-name-header" style="margin-bottom:1rem">
-    <h2 class="section-title">Hoja de Evaluación</h2>
+<!-- ══════════════════════════════════════════
+     VIEW: EVAL  — hoja del sinodal actual
+═══════════════════════════════════════════ -->
+<section class="view on" id="v-eval">
+  <div class="gtabs">
+    <button class="gtab on" onclick="switchGrupo('eval','A',this)">Grupo A</button>
+    <button class="gtab"    onclick="switchGrupo('eval','B',this)">Grupo B</button>
   </div>
-
-  <div class="grupo-tabs">
-    <button class="grupo-tab active" onclick="switchGrupoSinodal('A',this)">Grupo A</button>
-    <button class="grupo-tab" onclick="switchGrupoSinodal('B',this)">Grupo B</button>
-  </div>
-
-  <div id="sinodal-table-wrap" class="card tbl-wrap">
-    <div class="loader">Configure la URL del Apps Script y seleccione su rol para comenzar.</div>
-  </div>
-
-  <div class="btn-row">
-    <button class="btn btn-red" onclick="guardarCalificaciones()">💾 Guardar calificaciones</button>
-    <button class="btn btn-ghost" onclick="cargarSinodal()">🔄 Recargar</button>
+  <div id="eval-wrap"><div class="loader">Configure la URL y seleccione su rol para comenzar.</div></div>
+  <div class="btn-row" id="eval-btns" style="display:none">
+    <button class="btn btn-red" onclick="guardarCals('eval')">💾 Guardar calificaciones</button>
+    <button class="btn btn-ghost" onclick="cargarEval()">🔄 Recargar</button>
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════
-     VIEW: PRINCIPAL  (solo sinodal principal)
-══════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════
+     VIEW: PRINCIPAL  — eval + concentrador
+═══════════════════════════════════════════ -->
 <section class="view" id="v-principal">
-  <h2 class="section-title">Panel del Sinodal Principal</h2>
-
-  <h3 style="font-size:1rem;margin-bottom:1rem;color:var(--ink-2)">Mi hoja de evaluación</h3>
-
-  <div class="grupo-tabs">
-    <button class="grupo-tab active" onclick="switchGrupoPrincipal('A',this)">Grupo A</button>
-    <button class="grupo-tab" onclick="switchGrupoPrincipal('B',this)">Grupo B</button>
+  <h2 class="stitle">Mi hoja de evaluación</h2>
+  <div class="gtabs">
+    <button class="gtab on" onclick="switchGrupo('prin','A',this)">Grupo A</button>
+    <button class="gtab"    onclick="switchGrupo('prin','B',this)">Grupo B</button>
   </div>
-
-  <div id="principal-table-wrap" class="card tbl-wrap">
-    <div class="loader">Cargando...</div>
-  </div>
-
+  <div id="prin-wrap"><div class="loader">Cargando…</div></div>
   <div class="btn-row">
-    <button class="btn btn-red" onclick="guardarCalificacionesPrincipal()">💾 Guardar calificaciones</button>
+    <button class="btn btn-red" onclick="guardarCals('prin')">💾 Guardar calificaciones</button>
     <button class="btn btn-ghost" onclick="cargarPrincipal()">🔄 Recargar</button>
   </div>
 
-  <hr class="divider"/>
-  <h3 style="font-size:1rem;margin-bottom:1rem;color:var(--ink-2)">Hoja Concentradora</h3>
-
-  <div class="grupo-tabs">
-    <button class="grupo-tab active" onclick="switchGrupoConcentrador('A',this)">Grupo A</button>
-    <button class="grupo-tab" onclick="switchGrupoConcentrador('B',this)">Grupo B</button>
+  <hr class="div"/>
+  <h2 class="stitle">Concentrador</h2>
+  <div class="gtabs">
+    <button class="gtab on" onclick="switchGrupo('conc','A',this)">Grupo A</button>
+    <button class="gtab"    onclick="switchGrupo('conc','B',this)">Grupo B</button>
   </div>
-
-  <div id="concentrador-wrap" class="card tbl-wrap">
-    <div class="loader">Cargando concentrador...</div>
-  </div>
+  <div class="card tbl-wrap" id="conc-wrap"><div class="loader">Cargando…</div></div>
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="cargarConcentrador()">🔄 Actualizar concentrador</button>
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════
-     VIEW: ALUMNOS  (solo sinodal principal)
-══════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════
+     VIEW: ALUMNOS
+═══════════════════════════════════════════ -->
 <section class="view" id="v-alumnos">
-  <h2 class="section-title">Listado General de Alumnos</h2>
-
-  <div class="grupo-tabs">
-    <button class="grupo-tab active" onclick="switchGrupoAlumnos('A',this)">Grupo A</button>
-    <button class="grupo-tab" onclick="switchGrupoAlumnos('B',this)">Grupo B</button>
+  <h2 class="stitle">Listado General de Alumnos</h2>
+  <div class="gtabs">
+    <button class="gtab on" onclick="switchGrupo('alum','A',this)">Grupo A</button>
+    <button class="gtab"    onclick="switchGrupo('alum','B',this)">Grupo B</button>
   </div>
-
-  <div id="alumnos-table-wrap" class="card tbl-wrap">
-    <div class="loader">Cargando alumnos...</div>
-  </div>
+  <div class="card tbl-wrap" id="alum-wrap"><div class="loader">Cargando…</div></div>
 </section>
 
-<!-- ═══════════════════════════════════════════
-     VIEW: CONFIG  (solo sinodal principal)
-══════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════
+     VIEW: CONFIG
+═══════════════════════════════════════════ -->
 <section class="view" id="v-config">
-  <h2 class="section-title">Configuración del Examen</h2>
-
+  <h2 class="stitle">Sinodales</h2>
   <div class="card">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;flex-wrap:wrap">
-      <label style="font-weight:500;font-size:0.9rem">Número de sinodales:</label>
-      <input id="num-sinodales" type="number" min="1" max="10" value="3"
-             style="width:80px;border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-size:0.9rem"/>
-      <span style="font-size:0.8rem;color:var(--ink-3)">(Sin contar al sinodal principal)</span>
+    <p style="font-size:.84rem;color:var(--ink3);margin-bottom:.75rem">Defina los sinodales. El Sinodal Principal tiene número 0 y acceso a todo. Los demás solo ven su propia hoja a través de su URL.</p>
+    <table class="sin-table" id="sin-tbl">
+      <thead><tr><th style="width:70px">#</th><th>Nombre</th><th>URL de su página</th><th style="width:50px"></th></tr></thead>
+      <tbody id="sin-tbody"></tbody>
+    </table>
+    <button class="btn btn-ghost" onclick="addSinodalRow()">＋ Agregar sinodal</button>
+    <div class="btn-row">
+      <button class="btn btn-red" onclick="guardarSinodales()">💾 Guardar sinodales</button>
     </div>
+  </div>
 
-    <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem">Aspectos a evaluar por grado</h3>
-    <div class="config-grid" id="config-grid">
-      <div class="cg-header">Grado</div>
-      <div class="cg-header">Kata</div>
-      <div class="cg-header">Bunkai</div>
-      <div class="cg-header">Técnica Básica</div>
-      <div class="cg-header">Kumite</div>
-      <div class="cg-header">Teoría</div>
+  <h2 class="stitle">Aspectos por grado</h2>
+  <div class="card">
+    <div class="cg" id="cg">
+      <div class="cg-h">Grado</div>
+      <div class="cg-h">Kata</div>
+      <div class="cg-h">Bunkai</div>
+      <div class="cg-h">Téc. Básica</div>
+      <div class="cg-h">Kumite</div>
+      <div class="cg-h">Teoría</div>
     </div>
-
     <div class="btn-row">
       <button class="btn btn-red" onclick="guardarConfig()">💾 Guardar configuración</button>
-      <button class="btn btn-dark" onclick="inicializarHojas()">🗂 Inicializar hojas en Sheets</button>
-      <button class="btn btn-ghost" onclick="cargarConfig()">🔄 Recargar configuración</button>
+      <button class="btn btn-dark" onclick="inicializar()">🗂 Inicializar hojas en Sheets</button>
+      <button class="btn btn-ghost" onclick="cargarConfig()">🔄 Recargar</button>
     </div>
   </div>
 </section>
 
-<!-- TOAST -->
 <div id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════
-//  ESTADO GLOBAL
-// ═══════════════════════════════════════════
-const ASPECTOS = ["Kata","Bunkai","Tecnica Basica","Kumite","Teoria"];
-const GRADOS   = ["10 Kyu","9 Kyu","8 Kyu","7 Kyu","6 Kyu","5 Kyu","4 Kyu","3 Kyu","2 Kyu","1 Kyu"];
-const ESCALA   = ["M","R","B","MB","E"];
+// ══════════════════════════════════════════
+//  CONSTANTES Y ESTADO
+// ══════════════════════════════════════════
+const API_DEFAULT = "https://script.google.com/macros/s/AKfycby5TZOYesefauZ_OaBFtYtwaZLpiqLFKxouxctiDOcjgakYRd--birOiIatJPUTV7Wgrg/exec";
+const ASPECTOS    = ["Kata","Bunkai","Tecnica Basica","Kumite","Teoria"];
+const ASP_LABEL   = ["Kata","Bunkai","Téc. Básica","Kumite","Teoría"];
+const GRADOS      = ["10 Kyu","9 Kyu","8 Kyu","7 Kyu","6 Kyu","5 Kyu","4 Kyu","3 Kyu","2 Kyu","1 Kyu"];
+const ESCALA      = ["M","R","B","MB","E"];
+const VALS        = {M:6,R:7,B:8,MB:9,E:10};
 
-let API_URL        = localStorage.getItem("karate_api_url") || "";
-let currentRol     = null;   // 0 = principal, 1..N = sinodal número N
-let numSinodales   = 3;
-let config         = null;
+let API_URL    = localStorage.getItem("k_api") || API_DEFAULT;
+let rolNum     = null;   // null=sin rol, 0=principal, N=sinodal N
+let config     = null;
+let sinodales  = [];
 
-let grupoSinodal         = "A";
-let grupoPrincipal       = "A";
-let grupoConcentrador    = "A";
-let grupoAlumnos         = "A";
+// buffers de calificaciones en memoria
+// buf[contexto][grupo][numAlumno][aspecto] = "M"|"R"|...
+const buf = { eval:{A:{},B:{}}, prin:{A:{},B:{}} };
+const alumnos = { A:[], B:[] };
 
-// datos en memoria
-let alumnosA = [], alumnosB = [];
-let calsBuffer = { sinodal: { A:{}, B:{} }, principal: { A:{}, B:{} } };
+// grupos activos por contexto
+const gActivo = { eval:"A", prin:"A", conc:"A", alum:"A" };
 
-// ═══════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════
-document.getElementById("api-url-input").value = API_URL;
-if (API_URL) initRolSelector();
+// ══════════════════════════════════════════
+//  INICIALIZACIÓN
+// ══════════════════════════════════════════
+document.getElementById("api-in").value = API_URL;
+if (API_URL) conectar();
 
-function saveApiUrl() {
-  API_URL = document.getElementById("api-url-input").value.trim();
-  localStorage.setItem("karate_api_url", API_URL);
-  initRolSelector();
-  toast("URL guardada ✓");
+function guardarUrl() {
+  API_URL = document.getElementById("api-in").value.trim();
+  localStorage.setItem("k_api", API_URL);
+  conectar();
 }
 
-async function initRolSelector() {
-  if (!API_URL) return;
+async function conectar() {
+  document.getElementById("url-status").textContent = "Conectando…";
   try {
-    const cfg = await apiGet("getConfig");
-    numSinodales = cfg.numSinodales || 3;
-    config       = cfg;
-    const sel    = document.getElementById("rol-select");
-    // limpiar opciones previas (excepto la primera y el principal)
-    while (sel.options.length > 2) sel.remove(2);
-    for (let i = 1; i <= numSinodales; i++) {
-      const opt   = document.createElement("option");
-      opt.value   = i;
-      opt.text    = `Sinodal ${i}`;
-      sel.add(opt);
-    }
-    document.getElementById("rol-hint").textContent = "Selecciona tu rol.";
-    buildConfigGrid(cfg);
+    const r = await get("getConfig");
+    config = r;
+    const sr = await get("getSinodales");
+    sinodales = sr.sinodales || [];
+    document.getElementById("url-status").textContent = "✓ Conectado";
+    mostrarSelectorRol();
   } catch(e) {
-    toast("Error al conectar con el API. Verifique la URL.", true);
+    document.getElementById("url-status").textContent = "✗ Error de conexión";
+    toast("No se pudo conectar con el Apps Script.", true);
   }
 }
 
-function onRolChange() {
-  const val = document.getElementById("rol-select").value;
-  if (val === "") return;
-  currentRol = parseInt(val);
-  applyRol();
+function mostrarSelectorRol() {
+  // Si ya hay selector lo removemos
+  const prev = document.getElementById("rol-sel-wrap");
+  if (prev) prev.remove();
+
+  const wrap = document.createElement("div");
+  wrap.id = "rol-sel-wrap";
+  wrap.style.cssText = "display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;";
+
+  const lbl = document.createElement("span");
+  lbl.textContent = "Seleccione su rol:";
+  lbl.style.cssText = "font-size:.84rem;font-weight:600";
+
+  const sel = document.createElement("select");
+  sel.id = "rol-sel";
+  sel.style.cssText = "border:1px solid #ccc;border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:.84rem";
+
+  const optDef = document.createElement("option");
+  optDef.value = ""; optDef.text = "-- Seleccionar --";
+  sel.add(optDef);
+
+  const optP = document.createElement("option");
+  optP.value = "0"; optP.text = "Sinodal Principal";
+  sel.add(optP);
+
+  sinodales.forEach(s => {
+    const o = document.createElement("option");
+    o.value = s.numero; o.text = "Sinodal " + s.numero + " — " + s.nombre;
+    sel.add(o);
+  });
+
+  sel.onchange = () => {
+    const v = sel.value;
+    if (v === "") return;
+    rolNum = parseInt(v);
+    aplicarRol();
+  };
+
+  wrap.appendChild(lbl);
+  wrap.appendChild(sel);
+  document.getElementById("setup-zone").appendChild(wrap);
 }
 
-function applyRol() {
-  const isPrincipal = currentRol === 0;
-  document.getElementById("nav-principal").style.display = isPrincipal ? "" : "none";
-  document.getElementById("nav-alumnos").style.display   = isPrincipal ? "" : "none";
-  document.getElementById("nav-config").style.display    = isPrincipal ? "" : "none";
+function aplicarRol() {
+  const esPrincipal = rolNum === 0;
+  document.getElementById("nb-principal").style.display = esPrincipal ? "" : "none";
+  document.getElementById("nb-alumnos").style.display   = esPrincipal ? "" : "none";
+  document.getElementById("nb-config").style.display    = esPrincipal ? "" : "none";
 
-  if (isPrincipal) {
+  if (esPrincipal) {
+    document.getElementById("eval-btns").style.display = "none";
+    showView("v-principal");
     cargarPrincipal();
     cargarConcentrador();
-    cargarAlumnos();
-    cargarConfig();
-    showView("v-principal");
   } else {
-    cargarSinodal();
-    showView("v-sinodal");
+    document.getElementById("eval-btns").style.display = "flex";
+    showView("v-eval");
+    cargarEval();
+  }
+
+  if (esPrincipal) {
+    cargarConfig();
+    cargarAlumnos();
   }
 }
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  NAVEGACIÓN
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 function showView(id) {
-  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-
-  document.querySelectorAll(".topbar-nav button").forEach(b => b.classList.remove("active"));
-  const map = {
-    "v-sinodal":   "nav-sinodal",
-    "v-principal": "nav-principal",
-    "v-alumnos":   "nav-alumnos",
-    "v-config":    "nav-config"
-  };
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("on"));
+  document.getElementById(id).classList.add("on");
+  document.querySelectorAll(".tnav button").forEach(b => b.classList.remove("on"));
+  const map = {"v-eval":"nb-eval","v-principal":"nb-principal","v-alumnos":"nb-alumnos","v-config":"nb-config"};
   const btn = document.getElementById(map[id]);
-  if (btn) btn.classList.add("active");
+  if (btn) btn.classList.add("on");
 }
 
-// ═══════════════════════════════════════════
-//  API HELPERS
-// ═══════════════════════════════════════════
-async function apiGet(action, params={}) {
-  if (!API_URL) { toast("Configure la URL del Apps Script primero.", true); throw new Error("No URL"); }
-  const qs = Object.entries({ action, ...params }).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join("&");
+function switchGrupo(ctx, g, btn) {
+  btn.closest(".gtabs").querySelectorAll(".gtab").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  gActivo[ctx] = g;
+  if (ctx === "eval")  cargarEval();
+  if (ctx === "prin")  cargarPrincipal();
+  if (ctx === "conc")  cargarConcentrador();
+  if (ctx === "alum")  cargarAlumnos();
+}
+
+// ══════════════════════════════════════════
+//  API
+// ══════════════════════════════════════════
+async function get(action, params={}) {
+  const qs = Object.entries({action,...params}).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join("&");
   const res = await fetch(`${API_URL}?${qs}`);
-  const json = await res.json();
+  const txt = await res.text();
+  let json;
+  try { json = JSON.parse(txt); } catch(e) { throw new Error("Respuesta inválida del servidor"); }
   if (json.error) throw new Error(json.error);
   return json;
 }
 
-// Todo se envía por GET para evitar problemas de CORS con Apps Script.
-// Los datos de escritura viajan en el parámetro "payload" codificado en URI.
-async function apiPost(body) {
-  if (!API_URL) { toast("Configure la URL del Apps Script primero.", true); throw new Error("No URL"); }
-  const { action, ...rest } = body;
-  // sinodal y grupo van como params separados; el resto como payload
-  const { sinodal, grupo, data } = rest;
-  const params = { action };
-  if (sinodal !== undefined) params.sinodal = sinodal;
-  if (grupo   !== undefined) params.grupo   = grupo;
-  // payload contiene "data" para saveCalificaciones, o todo el body para saveConfig
-  const payloadObj = data !== undefined ? data : body.data || body;
-  params.payload = encodeURIComponent(JSON.stringify(payloadObj));
-  const qs = Object.entries(params).map(([k,v]) => `${k}=${v}`).join("&");
+async function post(action, params={}, payload=null) {
+  // Enviamos todo por GET con payload codificado para evitar CORS
+  const p = {...params, action};
+  if (payload !== null) p.payload = encodeURIComponent(JSON.stringify(payload));
+  const qs = Object.entries(p).map(([k,v])=>`${k}=${v}`).join("&");
   const res = await fetch(`${API_URL}?${qs}`);
-  const json = await res.json();
+  const txt = await res.text();
+  let json;
+  try { json = JSON.parse(txt); } catch(e) { throw new Error("Respuesta inválida del servidor"); }
   if (json.error) throw new Error(json.error);
   return json;
 }
 
-// ═══════════════════════════════════════════
-//  CARGA DE DATOS
-// ═══════════════════════════════════════════
-async function cargarSinodal() {
-  renderSinodalTable("sinodal-table-wrap", currentRol, grupoSinodal, "sinodal");
+// ══════════════════════════════════════════
+//  CARGA Y RENDER DE FICHAS
+// ══════════════════════════════════════════
+async function cargarEval() {
+  if (rolNum === null) return;
+  const grupo = gActivo.eval;
+  const wrap  = document.getElementById("eval-wrap");
+  wrap.innerHTML = '<div class="loader">Cargando alumnos…</div>';
+  try {
+    config = await get("getConfig");
+    const ar = await get("getAlumnos", {grupo});
+    const cr = await get("getCalificaciones", {sinodal: rolNum, grupo});
+    alumnos[grupo] = ar.alumnos || [];
+    buf.eval[grupo] = cr.calificaciones || {};
+    wrap.innerHTML = buildFichas(alumnos[grupo], buf.eval[grupo], config, "eval", grupo);
+  } catch(e) {
+    wrap.innerHTML = `<div class="loader err">Error: ${e.message}</div>`;
+  }
 }
 
 async function cargarPrincipal() {
-  renderSinodalTable("principal-table-wrap", 0, grupoPrincipal, "principal");
-}
-
-async function renderSinodalTable(wrapperId, sinodal, grupo, bufferKey) {
-  const wrap = document.getElementById(wrapperId);
-  wrap.innerHTML = '<div class="loader">Cargando...</div>';
-
+  const grupo = gActivo.prin;
+  const wrap  = document.getElementById("prin-wrap");
+  wrap.innerHTML = '<div class="loader">Cargando…</div>';
   try {
-    // Siempre recargar config para garantizar aspectos actualizados
-    config = await apiGet("getConfig");
-    numSinodales = config.numSinodales || numSinodales;
-
-    const [alumnosResp, calsResp] = await Promise.all([
-      apiGet("getAlumnos", { grupo }),
-      apiGet("getCalificaciones", { sinodal, grupo })
-    ]);
-
-    const alumnos        = alumnosResp.alumnos || [];
-    const calificaciones = calsResp.calificaciones || {};
-
-    if (grupo === "A") alumnosA = alumnos; else alumnosB = alumnos;
-    calsBuffer[bufferKey][grupo] = calificaciones;
-
-    if (!alumnos.length) {
-      wrap.innerHTML = '<div class="loader">Sin alumnos presentes en este grupo. Verifique los checkboxes en Sheets.</div>';
-      return;
-    }
-
-    wrap.innerHTML = buildEvalTable(alumnos, calificaciones, config, wrapperId + "-tbl", bufferKey, grupo);
+    config = await get("getConfig");
+    const ar = await get("getAlumnos", {grupo});
+    const cr = await get("getCalificaciones", {sinodal: 0, grupo});
+    alumnos[grupo] = ar.alumnos || [];
+    buf.prin[grupo] = cr.calificaciones || {};
+    wrap.innerHTML = buildFichas(alumnos[grupo], buf.prin[grupo], config, "prin", grupo);
   } catch(e) {
-    wrap.innerHTML = `<div class="loader" style="color:var(--red)">Error: ${e.message}</div>`;
+    wrap.innerHTML = `<div class="loader err">Error: ${e.message}</div>`;
   }
 }
 
-function buildEvalTable(alumnos, cals, cfg, tableId, bufferKey, grupo) {
-  if (!alumnos.length) return '<div class="loader">Sin alumnos en este grupo.</div>';
-  const aspectosPorGrado = cfg.aspectosPorGrado || {};
-
-  let html = `<table id="${tableId}"><thead><tr>
-    <th>#</th><th>Nombre</th><th>Grado</th>`;
-  ASPECTOS.forEach(a => { html += `<th>${a}</th>`; });
-  html += `<th>Promedio</th></tr></thead><tbody>`;
-
-  alumnos.forEach(al => {
-    const num  = al.numero.toString();
-    const grad = al.grado || "";
-    const activos = (aspectosPorGrado[grad]) || {};
+function buildFichas(lista, cals, cfg, ctx, grupo) {
+  if (!lista.length) return '<div class="loader">Sin alumnos presentes en este grupo.</div>';
+  const apg = (cfg && cfg.aspectosPorGrado) || {};
+  let html = '<div class="fichas-grid">';
+  lista.forEach(al => {
+    const num     = al.numero.toString();
+    const activos = apg[al.grado] || {};
     const calRow  = cals[num] || {};
-
-    html += `<tr data-num="${num}">`;
-    html += `<td class="num">${al.numero}</td>`;
-    html += `<td>${al.nombre}</td>`;
-    html += `<td>${grad}</td>`;
-
-    ASPECTOS.forEach(asp => {
-      const activo = activos[asp] === true;
-      if (!activo) {
-        html += `<td><select class="cal-sel" disabled data-asp="${asp}" data-num="${num}"><option value="">—</option></select></td>`;
-      } else {
-        const val = calRow[asp] || "";
-        html += `<td><select class="cal-sel" data-asp="${asp}" data-num="${num}" onchange="onCalChange(this,'${bufferKey}','${grupo}')">
-          <option value="">—</option>`;
-        ESCALA.forEach(e => { html += `<option value="${e}"${val===e?' selected':''}>${e}</option>`; });
-        html += `</select></td>`;
-      }
-    });
-
-    html += `<td><span class="badge-prom" id="prom-${bufferKey}-${grupo}-${num}">${calcPromedio(alumnos, num, cals, activos)}</span></td>`;
-    html += `</tr>`;
+    html += fichaHTML(al, activos, calRow, ctx, grupo);
   });
-
-  html += `</tbody></table>`;
+  html += '</div>';
   return html;
 }
 
-function onCalChange(sel, bufferKey, grupo) {
-  const num = sel.dataset.num;
-  const asp = sel.dataset.asp;
-  const val = sel.value;
-  if (!calsBuffer[bufferKey][grupo][num]) calsBuffer[bufferKey][grupo][num] = {};
-  calsBuffer[bufferKey][grupo][num][asp] = val;
+function fichaHTML(al, activos, calRow, ctx, grupo) {
+  const num = al.numero.toString();
+  let html = `
+  <div class="ficha" id="ficha-${ctx}-${grupo}-${num}">
+    <div class="ficha-head">
+      <div>
+        <div class="fn">${al.nombre}</div>
+        <div class="fg">${al.grado}</div>
+      </div>
+      <div class="ficha-num">#${al.numero}</div>
+    </div>
+    <div class="ficha-body">`;
 
-  // Recalcular promedio
-  const alumnos = grupo === "A" ? alumnosA : alumnosB;
-  const al = alumnos.find(a => a.numero.toString() === num);
-  if (!al || !config) return;
-  const activos = (config.aspectosPorGrado[al.grado]) || {};
-  const prom = calcPromedio(alumnos, num, calsBuffer[bufferKey][grupo], activos);
-  const el = document.getElementById(`prom-${bufferKey}-${grupo}-${num}`);
-  if (el) el.textContent = prom;
+  ASPECTOS.forEach((asp, i) => {
+    const activo = activos[asp] === true;
+    const sel    = calRow[asp] || "";
+    html += `<div class="aspecto-row">
+      <span class="asp-label">${ASP_LABEL[i]}</span>
+      <div class="asp-btns">`;
+
+    if (!activo) {
+      html += `<span style="font-size:.78rem;color:var(--ink4)">N/A</span>`;
+    } else {
+      ESCALA.forEach(e => {
+        html += `<button class="asp-btn${sel===e?' sel':''}"
+          data-ctx="${ctx}" data-grupo="${grupo}" data-num="${num}" data-asp="${asp}" data-val="${e}"
+          onclick="selCal(this)">${e}</button>`;
+      });
+    }
+    html += `</div></div>`;
+  });
+
+  const prom = calcProm(al, activos, calRow);
+  const cls  = prom==="—" ? "pend" : (parseFloat(prom)>=7 ? "good" : "bad");
+
+  html += `</div>
+    <div class="ficha-footer">
+      <span class="prom-label">Promedio</span>
+      <span class="prom-val ${cls}" id="prom-${ctx}-${grupo}-${num}">${prom}</span>
+    </div>
+  </div>`;
+  return html;
 }
 
-function calcPromedio(alumnos, num, cals, activos) {
-  const VALS = { M:6, R:7, B:8, MB:9, E:10 };
-  const calRow = cals[num] || {};
+function selCal(btn) {
+  const {ctx, grupo, num, asp, val} = btn.dataset;
+  // Actualizar buffer
+  if (!buf[ctx][grupo][num]) buf[ctx][grupo][num] = {};
+  // Toggle: si ya está seleccionado, deseleccionar
+  const actual = buf[ctx][grupo][num][asp];
+  buf[ctx][grupo][num][asp] = (actual === val) ? "" : val;
+  const nuevo = buf[ctx][grupo][num][asp];
+
+  // Actualizar botones de ese aspecto
+  btn.closest(".asp-btns").querySelectorAll(".asp-btn").forEach(b => {
+    b.classList.toggle("sel", b.dataset.val === nuevo && nuevo !== "");
+  });
+
+  // Recalcular promedio
+  const lista = alumnos[grupo];
+  const al    = lista.find(a => a.numero.toString() === num);
+  if (!al || !config) return;
+  const activos = (config.aspectosPorGrado[al.grado]) || {};
+  const prom    = calcProm(al, activos, buf[ctx][grupo][num]);
+  const el      = document.getElementById(`prom-${ctx}-${grupo}-${num}`);
+  if (el) {
+    el.textContent = prom;
+    el.className   = "prom-val " + (prom==="—" ? "pend" : parseFloat(prom)>=7 ? "good" : "bad");
+  }
+}
+
+function calcProm(al, activos, calRow) {
   const nums = [];
   ASPECTOS.forEach(asp => {
-    if (activos[asp] && calRow[asp] && VALS[calRow[asp]]) {
-      nums.push(VALS[calRow[asp]]);
-    }
+    if (activos[asp] && calRow[asp] && VALS[calRow[asp]]) nums.push(VALS[calRow[asp]]);
   });
   if (!nums.length) return "—";
   return (nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(2);
 }
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  GUARDAR CALIFICACIONES
-// ═══════════════════════════════════════════
-async function guardarCalificaciones() {
-  await guardar(currentRol, grupoSinodal, "sinodal");
-}
-async function guardarCalificacionesPrincipal() {
-  await guardar(0, grupoPrincipal, "principal");
-}
-async function guardar(sinodal, grupo, bufferKey) {
+// ══════════════════════════════════════════
+async function guardarCals(ctx) {
+  const grupo   = ctx === "eval" ? gActivo.eval : gActivo.prin;
+  const sinodal = ctx === "eval" ? rolNum : 0;
   try {
-    await apiPost({ action:"saveCalificaciones", sinodal, grupo, data: calsBuffer[bufferKey][grupo] });
+    await post("saveCalificaciones", {sinodal, grupo}, buf[ctx][grupo]);
     toast("Calificaciones guardadas ✓");
   } catch(e) {
-    toast("Error al guardar: " + e.message, true);
+    toast("Error: " + e.message, true);
   }
 }
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  CONCENTRADOR
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 async function cargarConcentrador() {
-  const wrap = document.getElementById("concentrador-wrap");
-  wrap.innerHTML = '<div class="loader">Cargando concentrador...</div>';
+  const grupo = gActivo.conc;
+  const wrap  = document.getElementById("conc-wrap");
+  wrap.innerHTML = '<div class="loader">Cargando…</div>';
   try {
-    const { concentrador } = await apiGet("getConcentrador", { grupo: grupoConcentrador });
-    wrap.innerHTML = buildConcentradorTable(concentrador);
+    const r = await get("getConcentrador", {grupo});
+    wrap.innerHTML = buildConcentrador(r.concentrador || []);
   } catch(e) {
-    wrap.innerHTML = `<div class="loader" style="color:var(--red)">Error: ${e.message}</div>`;
+    wrap.innerHTML = `<div class="loader err">Error: ${e.message}</div>`;
   }
 }
 
-function buildConcentradorTable(rows) {
-  if (!rows.length) return '<div class="loader">Sin datos en el concentrador.</div>';
-
-  let apr=0, noApr=0, pend=0;
+function buildConcentrador(rows) {
+  if (!rows.length) return '<div class="loader">Sin datos aún.</div>';
+  let apr=0,no=0,pend=0;
   rows.forEach(r => {
-    if (r["Resultado"]==="APROBADO") apr++;
-    else if (r["Resultado"]==="NO APROBADO") noApr++;
+    if (r.Resultado==="APROBADO") apr++;
+    else if (r.Resultado==="NO APROBADO") no++;
     else pend++;
   });
-
-  let html = `<div class="stat-row">
-    <div class="stat-card"><div class="sc-val">${rows.length}</div><div class="sc-lbl">Total</div></div>
-    <div class="stat-card"><div class="sc-val" style="color:var(--green)">${apr}</div><div class="sc-lbl">Aprobados</div></div>
-    <div class="stat-card"><div class="sc-val" style="color:var(--red)">${noApr}</div><div class="sc-lbl">No aprobados</div></div>
-    <div class="stat-card"><div class="sc-val" style="color:var(--gold)">${pend}</div><div class="sc-lbl">Pendientes</div></div>
-  </div>`;
-
-  html += `<table><thead><tr><th>#</th><th>Nombre</th><th>Grado</th>`;
-  ASPECTOS.forEach(a => { html += `<th>${a}</th>`; });
-  html += `<th>Prom. Final</th><th>Resultado</th></tr></thead><tbody>`;
-
+  let h = `<div class="stat-row">
+    <div class="stat-c"><div class="sv">${rows.length}</div><div class="sl">Total</div></div>
+    <div class="stat-c"><div class="sv" style="color:var(--green)">${apr}</div><div class="sl">Aprobados</div></div>
+    <div class="stat-c"><div class="sv" style="color:var(--red)">${no}</div><div class="sl">No aprobados</div></div>
+    <div class="stat-c"><div class="sv" style="color:var(--gold)">${pend}</div><div class="sl">Pendientes</div></div>
+  </div>
+  <table><thead><tr><th>#</th><th>Nombre</th><th>Grado</th>`;
+  ASPECTOS.forEach(a => { h += `<th>${a}</th>`; });
+  h += `<th>Promedio</th><th>Resultado</th></tr></thead><tbody>`;
   rows.forEach(r => {
-    html += `<tr>
-      <td class="num">${r["Numero"]||""}</td>
-      <td>${r["Nombre"]||""}</td>
-      <td>${r["Grado"]||""}</td>`;
-    ASPECTOS.forEach(a => { html += `<td>${r[a]||"—"}</td>`; });
-    const pf = r["Promedio Final"];
+    const pf  = r["Promedio Final"];
     const res = r["Resultado"];
-    const badge = !res ? `<span class="badge-pend">Pendiente</span>`
-                : res === "APROBADO" ? `<span class="badge-apr">APROBADO</span>`
-                : `<span class="badge-no">NO APROBADO</span>`;
-    html += `<td><span class="badge-prom">${pf||"—"}</span></td><td>${badge}</td></tr>`;
+    const rb  = !res ? `<span class="badge b-pend">Pendiente</span>`
+              : res==="APROBADO" ? `<span class="badge b-apr">APROBADO</span>`
+              : `<span class="badge b-no">NO APROBADO</span>`;
+    h += `<tr><td>${r.Numero||""}</td><td>${r.Nombre||""}</td><td>${r.Grado||""}</td>`;
+    ASPECTOS.forEach(a => { h += `<td>${r[a]||"—"}</td>`; });
+    h += `<td><span class="badge b-prom">${pf||"—"}</span></td><td>${rb}</td></tr>`;
   });
-
-  html += `</tbody></table>`;
-  return html;
+  h += `</tbody></table>`;
+  return h;
 }
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  ALUMNOS
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 async function cargarAlumnos() {
-  const wrap = document.getElementById("alumnos-table-wrap");
-  wrap.innerHTML = '<div class="loader">Cargando...</div>';
+  const grupo = gActivo.alum;
+  const wrap  = document.getElementById("alum-wrap");
+  wrap.innerHTML = '<div class="loader">Cargando…</div>';
   try {
-    const { alumnos } = await apiGet("getAlumnos", { grupo: grupoAlumnos });
-    if (!alumnos.length) { wrap.innerHTML = '<div class="loader">Sin alumnos.</div>'; return; }
-
-    let html = `<table><thead><tr><th>#</th><th>Nombre</th><th>Grado</th></tr></thead><tbody>`;
-    alumnos.forEach(a => {
-      html += `<tr><td class="num">${a.numero}</td><td>${a.nombre}</td><td>${a.grado}</td></tr>`;
-    });
-    html += `</tbody></table>`;
-    wrap.innerHTML = html;
+    const r = await get("getAlumnos", {grupo});
+    const list = r.alumnos || [];
+    if (!list.length) { wrap.innerHTML = '<div class="loader">Sin alumnos presentes.</div>'; return; }
+    let h = `<table><thead><tr><th>#</th><th>Nombre</th><th>Grado</th></tr></thead><tbody>`;
+    list.forEach(a => { h += `<tr><td>${a.numero}</td><td>${a.nombre}</td><td>${a.grado}</td></tr>`; });
+    h += `</tbody></table>`;
+    wrap.innerHTML = h;
   } catch(e) {
-    wrap.innerHTML = `<div class="loader" style="color:var(--red)">Error: ${e.message}</div>`;
+    wrap.innerHTML = `<div class="loader err">Error: ${e.message}</div>`;
   }
 }
 
-// ═══════════════════════════════════════════
-//  CONFIGURACIÓN
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
+//  CONFIGURACIÓN — SINODALES
+// ══════════════════════════════════════════
 async function cargarConfig() {
   try {
-    if (!config) config = await apiGet("getConfig");
-    document.getElementById("num-sinodales").value = config.numSinodales || 3;
-    buildConfigGrid(config);
+    const cr = await get("getConfig");
+    config = cr;
+    const sr = await get("getSinodales");
+    sinodales = sr.sinodales || [];
+    buildCG(config);
+    buildSinodalesTable(sinodales);
   } catch(e) {
     toast("Error al cargar configuración: " + e.message, true);
   }
 }
 
-function buildConfigGrid(cfg) {
-  const grid = document.getElementById("config-grid");
-  // limpiar filas previas (mantener cabecera = primeros 6 hijos)
-  while (grid.children.length > 6) grid.removeChild(grid.lastChild);
+function buildSinodalesTable(lista) {
+  const tbody = document.getElementById("sin-tbody");
+  tbody.innerHTML = "";
+  lista.forEach(s => addSinodalRow(s));
+}
 
-  const asp = cfg.aspectosPorGrado || {};
+function addSinodalRow(s) {
+  const tbody = document.getElementById("sin-tbody");
+  const idx   = tbody.rows.length + 1;
+  const data  = s || {numero: idx, nombre:"", url:""};
+  const tr    = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" value="${data.numero}" style="width:50px" placeholder="#"/></td>
+    <td><input type="text" value="${data.nombre}" placeholder="Nombre del sinodal"/></td>
+    <td><input type="text" value="${data.url||''}" placeholder="https://…"/></td>
+    <td><button class="btn btn-ghost" style="padding:4px 10px;font-size:.8rem" onclick="this.closest('tr').remove()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+async function guardarSinodales() {
+  const rows  = document.querySelectorAll("#sin-tbody tr");
+  const lista = [];
+  rows.forEach(tr => {
+    const inputs = tr.querySelectorAll("input");
+    const num    = inputs[0].value.trim();
+    const nom    = inputs[1].value.trim();
+    const url    = inputs[2].value.trim();
+    if (nom) lista.push({numero: parseInt(num)||lista.length+1, nombre:nom, url});
+  });
+  try {
+    await post("saveSinodales", {}, lista);
+    sinodales = lista;
+    toast("Sinodales guardados ✓");
+    mostrarSelectorRol(); // actualizar selector
+  } catch(e) {
+    toast("Error: " + e.message, true);
+  }
+}
+
+// ══════════════════════════════════════════
+//  CONFIGURACIÓN — ASPECTOS POR GRADO
+// ══════════════════════════════════════════
+function buildCG(cfg) {
+  const cg  = document.getElementById("cg");
+  const apg = (cfg && cfg.aspectosPorGrado) || {};
+  // limpiar filas previas (mantener 6 cabeceras)
+  while (cg.children.length > 6) cg.removeChild(cg.lastChild);
   GRADOS.forEach(g => {
     const lbl = document.createElement("div");
-    lbl.className = "cg-row-label";
-    lbl.textContent = g;
-    grid.appendChild(lbl);
-
+    lbl.className = "cg-rl"; lbl.textContent = g;
+    cg.appendChild(lbl);
     ASPECTOS.forEach(a => {
       const cell = document.createElement("div");
       cell.className = "cg-cell";
       const chk = document.createElement("input");
       chk.type = "checkbox";
-      chk.checked = (asp[g] && asp[g][a] === true);
-      chk.dataset.grado = g;
-      chk.dataset.asp   = a;
+      chk.checked = apg[g] && apg[g][a] === true;
+      chk.dataset.g = g; chk.dataset.a = a;
       cell.appendChild(chk);
-      grid.appendChild(cell);
+      cg.appendChild(cell);
     });
   });
 }
 
 async function guardarConfig() {
-  const numSin = parseInt(document.getElementById("num-sinodales").value) || 3;
-  const aspectosPorGrado = {};
-  GRADOS.forEach(g => { aspectosPorGrado[g] = {}; });
-
-  document.querySelectorAll("#config-grid input[type=checkbox]").forEach(chk => {
-    aspectosPorGrado[chk.dataset.grado][chk.dataset.asp] = chk.checked;
+  const apg = {};
+  GRADOS.forEach(g => { apg[g] = {}; });
+  document.querySelectorAll("#cg input[type=checkbox]").forEach(c => {
+    apg[c.dataset.g][c.dataset.a] = c.checked;
   });
-
   try {
-    await apiPost({ action:"saveConfig", data:{ numSinodales: numSin, aspectosPorGrado } });
-    config = { numSinodales: numSin, aspectosPorGrado };
-    numSinodales = numSin;
+    await post("saveConfig", {}, {aspectosPorGrado: apg});
+    config = {aspectosPorGrado: apg};
     toast("Configuración guardada ✓");
   } catch(e) {
     toast("Error: " + e.message, true);
   }
 }
 
-async function inicializarHojas() {
-  toast("Inicializando hojas... puede tardar unos segundos.");
+async function inicializar() {
+  toast("Inicializando hojas… puede tardar varios segundos.");
   try {
-    const r = await apiGet("initSheets");
+    const r = await get("initSheets");
     toast(r.message || "Hojas inicializadas ✓");
   } catch(e) {
     toast("Error: " + e.message, true);
   }
 }
 
-// ═══════════════════════════════════════════
-//  SWITCHES DE GRUPO
-// ═══════════════════════════════════════════
-function switchTab(btn) {
-  const parent = btn.closest(".grupo-tabs");
-  parent.querySelectorAll(".grupo-tab").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-}
-
-function switchGrupoSinodal(g, btn) {
-  switchTab(btn); grupoSinodal = g; cargarSinodal();
-}
-function switchGrupoPrincipal(g, btn) {
-  switchTab(btn); grupoPrincipal = g; cargarPrincipal();
-}
-function switchGrupoConcentrador(g, btn) {
-  switchTab(btn); grupoConcentrador = g; cargarConcentrador();
-}
-function switchGrupoAlumnos(g, btn) {
-  switchTab(btn); grupoAlumnos = g; cargarAlumnos();
-}
-
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  TOAST
-// ═══════════════════════════════════════════
-let toastTimer = null;
-function toast(msg, isError=false) {
+// ══════════════════════════════════════════
+let _tt = null;
+function toast(msg, isErr=false) {
   const el = document.getElementById("toast");
   el.textContent = msg;
-  el.className = "show" + (isError ? " error" : "");
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ""; }, 3500);
+  el.className   = "on" + (isErr ? " err" : "");
+  if (_tt) clearTimeout(_tt);
+  _tt = setTimeout(()=>{ el.className=""; }, 3500);
 }
 </script>
 </body>
