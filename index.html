@@ -484,8 +484,14 @@ function buildFichas(lista, cals, cfg, ctx, grupo) {
   const apg = (cfg && cfg.aspectosPorGrado) || {};
   let html = '<div class="fichas-grid">';
   lista.forEach(al => {
+    if(ctx !== "alum" && al.presente === false){
+  return;
+}
     const num     = al.numero.toString();
-    const activos = apg[al.grado] || {};
+    const activos =
+  apg[al.grado] ||
+  apg[al.grado.trim()] ||
+  {};
     const calRow  = cals[num] || {};
     html += fichaHTML(al, activos, calRow, ctx, grupo);
   });
