@@ -363,8 +363,7 @@ let usuarioActual = null;
 let config     = null;
 let sinodales  = [];
 
-const URL_PARAMS = new URLSearchParams(window.location.search);
-const SINODAL_URL = URL_PARAMS.get("sinodal");
+
 
 // buffers de calificaciones en memoria
 // buf[contexto][grupo][numAlumno][aspecto] = "M"|"R"|...
@@ -446,22 +445,10 @@ async function conectar() {
     const sr = await get("getSinodales");
     sinodales = sr.sinodales || [];
     document.getElementById("url-status").textContent = "✓ Conectado";
-    mostrarSelectorRol();
+    // Selector deshabilitado.
+// El rol ahora se determina por token.
 
-    if(SINODAL_URL){
-
-      rolNum = parseInt(SINODAL_URL);
-
-      aplicarRol();
-
-      const sel = document.getElementById("rol-sel");
-
-      if(sel){
-        sel.value = rolNum;
-        sel.disabled = true;
-      }
-
-    }
+    
   } catch(e) {
     document.getElementById("url-status").textContent = "✗ Error de conexión";
     toast("No se pudo conectar con el Apps Script.", true);
@@ -1153,24 +1140,34 @@ function toast(msg, isErr=false) {
 
   try{
 
-    const r = await get(
-      "validarToken",
-      {token}
-    );
+    // Conectar primero
+await conectar();
 
-    if(!r.ok){
+// Buscar token en tabla de sinodales
+const sinodal =
+  sinodales.find(
+    s =>
+      (s.url || "")
+        .toString()
+        .trim()
+        .toUpperCase()
+      ===
+      token.toUpperCase()
+  );
 
-      document.getElementById("login-msg")
-        .textContent =
-        "Token inválido";
+if(!sinodal){
 
-      return;
+  document.getElementById("login-msg")
+    .textContent =
+    "Token inválido";
 
-    }
+  return;
 
-    usuarioActual = r.sinodal;
+}
 
-    rolNum = usuarioActual.numero;
+usuarioActual = sinodal;
+
+rolNum = Number(sinodal.numero);
 
     tokenActual = token;
 
