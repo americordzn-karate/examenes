@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Evaluación de Karate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --red:       #c0392b;
+    --red-dark:  #922b21;
+    --red-light: #f9ebea;
+    --gold:      #c49a1a;
+    --gold-light:#fef9e7;
+    --ink:       #1a1a1a;
+    --ink-2:     #444;
+    --ink-3:     #888;
+    --border:    #ddd;
+    --bg:        #f7f5f0;
+    --white:     #ffffff;
+    --green:     #1e8449;
+    --green-bg:  #eafaf1;
+    --orange:    #ca6f1e;
+    --orange-bg: #fef5e7;
+    --font-title: 'Noto Serif JP', serif;
+    --font-body:  'DM Sans', sans-serif;
+    --radius:     8px;
+    --shadow:     0 2px 8px rgba(0,0,0,0.08);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    background: var(--ink);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-brand {
+    font-family: var(--font-title);
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .topbar-brand span.kanji {
+    font-size: 1.3rem;
+    color: var(--gold);
+  }
+  .topbar-nav {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .topbar-nav button {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.85);
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .topbar-nav button:hover, .topbar-nav button.active {
+    background: var(--red);
+    border-color: var(--red);
+    color: var(--white);
+  }
+
+  /* ── VIEWS ── */
+  .view { display: none; padding: 2rem; max-width: 1200px; margin: 0 auto; }
+  .view.active { display: block; }
+
+  /* ── API CONFIG BANNER ── */
+  #api-banner {
+    background: var(--gold-light);
+    border: 1px solid var(--gold);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--ink-2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #api-banner input {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    font-family: var(--font-body);
+  }
+  #api-banner button {
+    background: var(--ink);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-family: var(--font-title);
+    font-size: 1.3rem;
+    color: var(--ink);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── GRUPO TABS ── */
+  .grupo-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+  }
+  .grupo-tab {
+    padding: 8px 22px;
+    border: none;
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: var(--ink-3);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s;
+  }
+  .grupo-tab.active {
+    color: var(--red);
+    border-bottom-color: var(--red);
+    font-weight: 600;
+  }
+
+  /* ── TABLE ── */
+  .tbl-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  thead tr {
+    background: var(--ink);
+    color: var(--white);
+  }
+  thead th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody tr:hover { background: var(--red-light); }
+  tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+  }
+  tbody td.num { font-variant-numeric: tabular-nums; }
+
+  select.cal-sel {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.84rem;
+    font-family: var(--font-body);
+    background: var(--white);
+    cursor: pointer;
+    min-width: 68px;
+  }
+  select.cal-sel:disabled { background: #f0f0f0; color: var(--ink-3); cursor: default; }
+
+  .badge-prom {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: var(--gold-light);
+    color: var(--gold);
+  }
+  .badge-apr {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: var(--green-bg);
+    color: var(--green);
+  }
+  .badge-no {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: var(--red-light);
+    color: var(--red);
+  }
+  .badge-pend {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    background: #f0f0f0;
+    color: var(--ink-3);
+  }
+
+  /* ── BTN ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 20px;
+    border-radius: var(--radius);
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-red    { background: var(--red); color: var(--white); }
+  .btn-dark   { background: var(--ink); color: var(--white); }
+  .btn-ghost  { background: transparent; color: var(--ink); border: 1px solid var(--border); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  /* ── CONFIG GRID ── */
+  .config-grid {
+    display: grid;
+    grid-template-columns: 140px repeat(5, 1fr);
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: 0.85rem;
+  }
+  .config-grid .cg-header {
+    background: var(--ink);
+    color: var(--white);
+    padding: 8px 10px;
+    font-weight: 500;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+  .config-grid .cg-header:last-child { border-right: none; }
+  .config-grid .cg-row-label {
+    background: var(--bg);
+    padding: 8px 10px;
+    font-weight: 500;
+    border-top: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .config-grid .cg-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: 6px;
+  }
+  .config-grid .cg-cell:last-child { border-right: none; }
+  .config-grid input[type=checkbox] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--red);
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--ink);
+    color: var(--white);
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 9999;
+    max-width: 320px;
+  }
+  #toast.show { opacity: 1; }
+  #toast.error { background: var(--red); }
+
+  /* ── LOADER ── */
+  .loader {
+    text-align: center;
+    padding: 3rem;
+    color: var(--ink-3);
+    font-size: 0.9rem;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+
+  /* ── STAT ROW ── */
+  .stat-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+  }
+  .stat-card .sc-val { font-size: 1.6rem; font-weight: 600; color: var(--ink); }
+  .stat-card .sc-lbl { font-size: 0.78rem; color: var(--ink-3); margin-top: 2px; }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:640px) {
+    .topbar { padding: 0 1rem; }
+    .view { padding: 1rem; }
+    .topbar-nav button { padding: 5px 8px; font-size: 0.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <span class="kanji">空手</span>
+    Sistema de Evaluación de Karate
+  </div>
+  <nav class="topbar-nav" id="main-nav">
+    <button onclick="showView('v-sinodal')" id="nav-sinodal">Mi Hoja</button>
+    <button onclick="showView('v-principal')" id="nav-principal" style="display:none">Panel Principal</button>
+    <button onclick="showView('v-alumnos')" id="nav-alumnos" style="display:none">Alumnos</button>
+    <button onclick="showView('v-config')" id="nav-config" style="display:none">Configuración</button>
+  </nav>
+</header>
+
+<!-- API BANNER -->
+<div id="api-banner" style="max-width:1200px;margin:1rem auto 0;padding-left:2rem;padding-right:2rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <span style="white-space:nowrap;font-weight:500">🔗 URL del Apps Script:</span>
+  <input id="api-url-input" type="text" placeholder="https://script.google.com/macros/s/AKfy.../exec" value=""/>
+  <button onclick="saveApiUrl()">Guardar</button>
+  <select id="rol-select" onchange="onRolChange()" style="border:1px solid #ccc;border-radius:6px;padding:6px 10px;font-size:0.85rem;font-family:var(--font-body)">
+    <option value="">-- Selecciona tu rol --</option>
+    <option value="0">Sinodal Principal</option>
+  </select>
+  <span id="rol-hint" style="font-size:0.8rem;color:#888">Los sinodales se cargan al conectar la URL</span>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW: SINODAL  (acceso para todos)
+══════════════════════════════════════════════ -->
+<section class="view active" id="v-sinodal">
+  <div id="sinodal-name-header" style="margin-bottom:1rem">
+    <h2 class="section-title">Hoja de Evaluación</h2>
+  </div>
+
+  <div class="grupo-tabs">
+    <button class="grupo-tab active" onclick="switchGrupoSinodal('A',this)">Grupo A</button>
+    <button class="grupo-tab" onclick="switchGrupoSinodal('B',this)">Grupo B</button>
+  </div>
+
+  <div id="sinodal-table-wrap" class="card tbl-wrap">
+    <div class="loader">Configure la URL del Apps Script y seleccione su rol para comenzar.</div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-red" onclick="guardarCalificaciones()">💾 Guardar calificaciones</button>
+    <button class="btn btn-ghost" onclick="cargarSinodal()">🔄 Recargar</button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     VIEW: PRINCIPAL  (solo sinodal principal)
+══════════════════════════════════════════════ -->
+<section class="view" id="v-principal">
+  <h2 class="section-title">Panel del Sinodal Principal</h2>
+
+  <h3 style="font-size:1rem;margin-bottom:1rem;color:var(--ink-2)">Mi hoja de evaluación</h3>
+
+  <div class="grupo-tabs">
+    <button class="grupo-tab active" onclick="switchGrupoPrincipal('A',this)">Grupo A</button>
+    <button class="grupo-tab" onclick="switchGrupoPrincipal('B',this)">Grupo B</button>
+  </div>
+
+  <div id="principal-table-wrap" class="card tbl-wrap">
+    <div class="loader">Cargando...</div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-red" onclick="guardarCalificacionesPrincipal()">💾 Guardar calificaciones</button>
+    <button class="btn btn-ghost" onclick="cargarPrincipal()">🔄 Recargar</button>
+  </div>
+
+  <hr class="divider"/>
+  <h3 style="font-size:1rem;margin-bottom:1rem;color:var(--ink-2)">Hoja Concentradora</h3>
+
+  <div class="grupo-tabs">
+    <button class="grupo-tab active" onclick="switchGrupoConcentrador('A',this)">Grupo A</button>
+    <button class="grupo-tab" onclick="switchGrupoConcentrador('B',this)">Grupo B</button>
+  </div>
+
+  <div id="concentrador-wrap" class="card tbl-wrap">
+    <div class="loader">Cargando concentrador...</div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="cargarConcentrador()">🔄 Actualizar concentrador</button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     VIEW: ALUMNOS  (solo sinodal principal)
+══════════════════════════════════════════════ -->
+<section class="view" id="v-alumnos">
+  <h2 class="section-title">Listado General de Alumnos</h2>
+
+  <div class="grupo-tabs">
+    <button class="grupo-tab active" onclick="switchGrupoAlumnos('A',this)">Grupo A</button>
+    <button class="grupo-tab" onclick="switchGrupoAlumnos('B',this)">Grupo B</button>
+  </div>
+
+  <div id="alumnos-table-wrap" class="card tbl-wrap">
+    <div class="loader">Cargando alumnos...</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     VIEW: CONFIG  (solo sinodal principal)
+══════════════════════════════════════════════ -->
+<section class="view" id="v-config">
+  <h2 class="section-title">Configuración del Examen</h2>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;flex-wrap:wrap">
+      <label style="font-weight:500;font-size:0.9rem">Número de sinodales:</label>
+      <input id="num-sinodales" type="number" min="1" max="10" value="3"
+             style="width:80px;border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-size:0.9rem"/>
+      <span style="font-size:0.8rem;color:var(--ink-3)">(Sin contar al sinodal principal)</span>
+    </div>
+
+    <h3 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem">Aspectos a evaluar por grado</h3>
+    <div class="config-grid" id="config-grid">
+      <div class="cg-header">Grado</div>
+      <div class="cg-header">Kata</div>
+      <div class="cg-header">Bunkai</div>
+      <div class="cg-header">Técnica Básica</div>
+      <div class="cg-header">Kumite</div>
+      <div class="cg-header">Teoría</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-red" onclick="guardarConfig()">💾 Guardar configuración</button>
+      <button class="btn btn-dark" onclick="inicializarHojas()">🗂 Inicializar hojas en Sheets</button>
+      <button class="btn btn-ghost" onclick="cargarConfig()">🔄 Recargar configuración</button>
+    </div>
+  </div>
+</section>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  ESTADO GLOBAL
+// ═══════════════════════════════════════════
+const ASPECTOS = ["Kata","Bunkai","Tecnica Basica","Kumite","Teoria"];
+const GRADOS   = ["10 Kyu","9 Kyu","8 Kyu","7 Kyu","6 Kyu","5 Kyu","4 Kyu","3 Kyu","2 Kyu","1 Kyu"];
+const ESCALA   = ["M","R","B","MB","E"];
+
+let API_URL        = localStorage.getItem("karate_api_url") || "";
+let currentRol     = null;   // 0 = principal, 1..N = sinodal número N
+let numSinodales   = 3;
+let config         = null;
+
+let grupoSinodal         = "A";
+let grupoPrincipal       = "A";
+let grupoConcentrador    = "A";
+let grupoAlumnos         = "A";
+
+// datos en memoria
+let alumnosA = [], alumnosB = [];
+let calsBuffer = { sinodal: { A:{}, B:{} }, principal: { A:{}, B:{} } };
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+document.getElementById("api-url-input").value = API_URL;
+if (API_URL) initRolSelector();
+
+function saveApiUrl() {
+  API_URL = document.getElementById("api-url-input").value.trim();
+  localStorage.setItem("karate_api_url", API_URL);
+  initRolSelector();
+  toast("URL guardada ✓");
+}
+
+async function initRolSelector() {
+  if (!API_URL) return;
+  try {
+    const cfg = await apiGet("getConfig");
+    numSinodales = cfg.numSinodales || 3;
+    config       = cfg;
+    const sel    = document.getElementById("rol-select");
+    // limpiar opciones previas (excepto la primera y el principal)
+    while (sel.options.length > 2) sel.remove(2);
+    for (let i = 1; i <= numSinodales; i++) {
+      const opt   = document.createElement("option");
+      opt.value   = i;
+      opt.text    = `Sinodal ${i}`;
+      sel.add(opt);
+    }
+    document.getElementById("rol-hint").textContent = "Selecciona tu rol.";
+    buildConfigGrid(cfg);
+  } catch(e) {
+    toast("Error al conectar con el API. Verifique la URL.", true);
+  }
+}
+
+function onRolChange() {
+  const val = document.getElementById("rol-select").value;
+  if (val === "") return;
+  currentRol = parseInt(val);
+  applyRol();
+}
+
+function applyRol() {
+  const isPrincipal = currentRol === 0;
+  document.getElementById("nav-principal").style.display = isPrincipal ? "" : "none";
+  document.getElementById("nav-alumnos").style.display   = isPrincipal ? "" : "none";
+  document.getElementById("nav-config").style.display    = isPrincipal ? "" : "none";
+
+  if (isPrincipal) {
+    cargarPrincipal();
+    cargarConcentrador();
+    cargarAlumnos();
+    cargarConfig();
+    showView("v-principal");
+  } else {
+    cargarSinodal();
+    showView("v-sinodal");
+  }
+}
+
+// ═══════════════════════════════════════════
+//  NAVEGACIÓN
+// ═══════════════════════════════════════════
+function showView(id) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  document.querySelectorAll(".topbar-nav button").forEach(b => b.classList.remove("active"));
+  const map = {
+    "v-sinodal":   "nav-sinodal",
+    "v-principal": "nav-principal",
+    "v-alumnos":   "nav-alumnos",
+    "v-config":    "nav-config"
+  };
+  const btn = document.getElementById(map[id]);
+  if (btn) btn.classList.add("active");
+}
+
+// ═══════════════════════════════════════════
+//  API HELPERS
+// ═══════════════════════════════════════════
+async function apiGet(action, params={}) {
+  if (!API_URL) { toast("Configure la URL del Apps Script primero.", true); throw new Error("No URL"); }
+  const qs = Object.entries({ action, ...params }).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join("&");
+  const res = await fetch(`${API_URL}?${qs}`);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+async function apiPost(body) {
+  if (!API_URL) { toast("Configure la URL del Apps Script primero.", true); throw new Error("No URL"); }
+  const res = await fetch(API_URL, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+// ═══════════════════════════════════════════
+//  CARGA DE DATOS
+// ═══════════════════════════════════════════
+async function cargarSinodal() {
+  renderSinodalTable("sinodal-table-wrap", currentRol, grupoSinodal, "sinodal");
+}
+
+async function cargarPrincipal() {
+  renderSinodalTable("principal-table-wrap", 0, grupoPrincipal, "principal");
+}
+
+async function renderSinodalTable(wrapperId, sinodal, grupo, bufferKey) {
+  const wrap = document.getElementById(wrapperId);
+  wrap.innerHTML = '<div class="loader">Cargando...</div>';
+
+  try {
+    if (!config) config = await apiGet("getConfig");
+    const { alumnos } = await apiGet("getAlumnos", { grupo });
+    const { calificaciones } = await apiGet("getCalificaciones", { sinodal, grupo });
+
+    if (grupo === "A") alumnosA = alumnos; else alumnosB = alumnos;
+    calsBuffer[bufferKey][grupo] = calificaciones;
+
+    wrap.innerHTML = buildEvalTable(alumnos, calificaciones, config, wrapperId + "-tbl", bufferKey, grupo);
+  } catch(e) {
+    wrap.innerHTML = `<div class="loader" style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+function buildEvalTable(alumnos, cals, cfg, tableId, bufferKey, grupo) {
+  if (!alumnos.length) return '<div class="loader">Sin alumnos en este grupo.</div>';
+  const aspectosPorGrado = cfg.aspectosPorGrado || {};
+
+  let html = `<table id="${tableId}"><thead><tr>
+    <th>#</th><th>Nombre</th><th>Grado</th>`;
+  ASPECTOS.forEach(a => { html += `<th>${a}</th>`; });
+  html += `<th>Promedio</th></tr></thead><tbody>`;
+
+  alumnos.forEach(al => {
+    const num  = al.numero.toString();
+    const grad = al.grado || "";
+    const activos = (aspectosPorGrado[grad]) || {};
+    const calRow  = cals[num] || {};
+
+    html += `<tr data-num="${num}">`;
+    html += `<td class="num">${al.numero}</td>`;
+    html += `<td>${al.nombre}</td>`;
+    html += `<td>${grad}</td>`;
+
+    ASPECTOS.forEach(asp => {
+      const activo = activos[asp] === true;
+      if (!activo) {
+        html += `<td><select class="cal-sel" disabled data-asp="${asp}" data-num="${num}"><option value="">—</option></select></td>`;
+      } else {
+        const val = calRow[asp] || "";
+        html += `<td><select class="cal-sel" data-asp="${asp}" data-num="${num}" onchange="onCalChange(this,'${bufferKey}','${grupo}')">
+          <option value="">—</option>`;
+        ESCALA.forEach(e => { html += `<option value="${e}"${val===e?' selected':''}>${e}</option>`; });
+        html += `</select></td>`;
+      }
+    });
+
+    html += `<td><span class="badge-prom" id="prom-${bufferKey}-${grupo}-${num}">${calcPromedio(alumnos, num, cals, activos)}</span></td>`;
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  return html;
+}
+
+function onCalChange(sel, bufferKey, grupo) {
+  const num = sel.dataset.num;
+  const asp = sel.dataset.asp;
+  const val = sel.value;
+  if (!calsBuffer[bufferKey][grupo][num]) calsBuffer[bufferKey][grupo][num] = {};
+  calsBuffer[bufferKey][grupo][num][asp] = val;
+
+  // Recalcular promedio
+  const alumnos = grupo === "A" ? alumnosA : alumnosB;
+  const al = alumnos.find(a => a.numero.toString() === num);
+  if (!al || !config) return;
+  const activos = (config.aspectosPorGrado[al.grado]) || {};
+  const prom = calcPromedio(alumnos, num, calsBuffer[bufferKey][grupo], activos);
+  const el = document.getElementById(`prom-${bufferKey}-${grupo}-${num}`);
+  if (el) el.textContent = prom;
+}
+
+function calcPromedio(alumnos, num, cals, activos) {
+  const VALS = { M:6, R:7, B:8, MB:9, E:10 };
+  const calRow = cals[num] || {};
+  const nums = [];
+  ASPECTOS.forEach(asp => {
+    if (activos[asp] && calRow[asp] && VALS[calRow[asp]]) {
+      nums.push(VALS[calRow[asp]]);
+    }
+  });
+  if (!nums.length) return "—";
+  return (nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(2);
+}
+
+// ═══════════════════════════════════════════
+//  GUARDAR CALIFICACIONES
+// ═══════════════════════════════════════════
+async function guardarCalificaciones() {
+  await guardar(currentRol, grupoSinodal, "sinodal");
+}
+async function guardarCalificacionesPrincipal() {
+  await guardar(0, grupoPrincipal, "principal");
+}
+async function guardar(sinodal, grupo, bufferKey) {
+  try {
+    await apiPost({ action:"saveCalificaciones", sinodal, grupo, data: calsBuffer[bufferKey][grupo] });
+    toast("Calificaciones guardadas ✓");
+  } catch(e) {
+    toast("Error al guardar: " + e.message, true);
+  }
+}
+
+// ═══════════════════════════════════════════
+//  CONCENTRADOR
+// ═══════════════════════════════════════════
+async function cargarConcentrador() {
+  const wrap = document.getElementById("concentrador-wrap");
+  wrap.innerHTML = '<div class="loader">Cargando concentrador...</div>';
+  try {
+    const { concentrador } = await apiGet("getConcentrador", { grupo: grupoConcentrador });
+    wrap.innerHTML = buildConcentradorTable(concentrador);
+  } catch(e) {
+    wrap.innerHTML = `<div class="loader" style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+function buildConcentradorTable(rows) {
+  if (!rows.length) return '<div class="loader">Sin datos en el concentrador.</div>';
+
+  let apr=0, noApr=0, pend=0;
+  rows.forEach(r => {
+    if (r["Resultado"]==="APROBADO") apr++;
+    else if (r["Resultado"]==="NO APROBADO") noApr++;
+    else pend++;
+  });
+
+  let html = `<div class="stat-row">
+    <div class="stat-card"><div class="sc-val">${rows.length}</div><div class="sc-lbl">Total</div></div>
+    <div class="stat-card"><div class="sc-val" style="color:var(--green)">${apr}</div><div class="sc-lbl">Aprobados</div></div>
+    <div class="stat-card"><div class="sc-val" style="color:var(--red)">${noApr}</div><div class="sc-lbl">No aprobados</div></div>
+    <div class="stat-card"><div class="sc-val" style="color:var(--gold)">${pend}</div><div class="sc-lbl">Pendientes</div></div>
+  </div>`;
+
+  html += `<table><thead><tr><th>#</th><th>Nombre</th><th>Grado</th>`;
+  ASPECTOS.forEach(a => { html += `<th>${a}</th>`; });
+  html += `<th>Prom. Final</th><th>Resultado</th></tr></thead><tbody>`;
+
+  rows.forEach(r => {
+    html += `<tr>
+      <td class="num">${r["Numero"]||""}</td>
+      <td>${r["Nombre"]||""}</td>
+      <td>${r["Grado"]||""}</td>`;
+    ASPECTOS.forEach(a => { html += `<td>${r[a]||"—"}</td>`; });
+    const pf = r["Promedio Final"];
+    const res = r["Resultado"];
+    const badge = !res ? `<span class="badge-pend">Pendiente</span>`
+                : res === "APROBADO" ? `<span class="badge-apr">APROBADO</span>`
+                : `<span class="badge-no">NO APROBADO</span>`;
+    html += `<td><span class="badge-prom">${pf||"—"}</span></td><td>${badge}</td></tr>`;
+  });
+
+  html += `</tbody></table>`;
+  return html;
+}
+
+// ═══════════════════════════════════════════
+//  ALUMNOS
+// ═══════════════════════════════════════════
+async function cargarAlumnos() {
+  const wrap = document.getElementById("alumnos-table-wrap");
+  wrap.innerHTML = '<div class="loader">Cargando...</div>';
+  try {
+    const { alumnos } = await apiGet("getAlumnos", { grupo: grupoAlumnos });
+    if (!alumnos.length) { wrap.innerHTML = '<div class="loader">Sin alumnos.</div>'; return; }
+
+    let html = `<table><thead><tr><th>#</th><th>Nombre</th><th>Grado</th></tr></thead><tbody>`;
+    alumnos.forEach(a => {
+      html += `<tr><td class="num">${a.numero}</td><td>${a.nombre}</td><td>${a.grado}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    wrap.innerHTML = html;
+  } catch(e) {
+    wrap.innerHTML = `<div class="loader" style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  CONFIGURACIÓN
+// ═══════════════════════════════════════════
+async function cargarConfig() {
+  try {
+    if (!config) config = await apiGet("getConfig");
+    document.getElementById("num-sinodales").value = config.numSinodales || 3;
+    buildConfigGrid(config);
+  } catch(e) {
+    toast("Error al cargar configuración: " + e.message, true);
+  }
+}
+
+function buildConfigGrid(cfg) {
+  const grid = document.getElementById("config-grid");
+  // limpiar filas previas (mantener cabecera = primeros 6 hijos)
+  while (grid.children.length > 6) grid.removeChild(grid.lastChild);
+
+  const asp = cfg.aspectosPorGrado || {};
+  GRADOS.forEach(g => {
+    const lbl = document.createElement("div");
+    lbl.className = "cg-row-label";
+    lbl.textContent = g;
+    grid.appendChild(lbl);
+
+    ASPECTOS.forEach(a => {
+      const cell = document.createElement("div");
+      cell.className = "cg-cell";
+      const chk = document.createElement("input");
+      chk.type = "checkbox";
+      chk.checked = (asp[g] && asp[g][a] === true);
+      chk.dataset.grado = g;
+      chk.dataset.asp   = a;
+      cell.appendChild(chk);
+      grid.appendChild(cell);
+    });
+  });
+}
+
+async function guardarConfig() {
+  const numSin = parseInt(document.getElementById("num-sinodales").value) || 3;
+  const aspectosPorGrado = {};
+  GRADOS.forEach(g => { aspectosPorGrado[g] = {}; });
+
+  document.querySelectorAll("#config-grid input[type=checkbox]").forEach(chk => {
+    aspectosPorGrado[chk.dataset.grado][chk.dataset.asp] = chk.checked;
+  });
+
+  try {
+    await apiPost({ action:"saveConfig", data:{ numSinodales: numSin, aspectosPorGrado } });
+    config = { numSinodales: numSin, aspectosPorGrado };
+    numSinodales = numSin;
+    toast("Configuración guardada ✓");
+  } catch(e) {
+    toast("Error: " + e.message, true);
+  }
+}
+
+async function inicializarHojas() {
+  toast("Inicializando hojas... puede tardar unos segundos.");
+  try {
+    const r = await apiGet("initSheets");
+    toast(r.message || "Hojas inicializadas ✓");
+  } catch(e) {
+    toast("Error: " + e.message, true);
+  }
+}
+
+// ═══════════════════════════════════════════
+//  SWITCHES DE GRUPO
+// ═══════════════════════════════════════════
+function switchTab(btn) {
+  const parent = btn.closest(".grupo-tabs");
+  parent.querySelectorAll(".grupo-tab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+function switchGrupoSinodal(g, btn) {
+  switchTab(btn); grupoSinodal = g; cargarSinodal();
+}
+function switchGrupoPrincipal(g, btn) {
+  switchTab(btn); grupoPrincipal = g; cargarPrincipal();
+}
+function switchGrupoConcentrador(g, btn) {
+  switchTab(btn); grupoConcentrador = g; cargarConcentrador();
+}
+function switchGrupoAlumnos(g, btn) {
+  switchTab(btn); grupoAlumnos = g; cargarAlumnos();
+}
+
+// ═══════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════
+let toastTimer = null;
+function toast(msg, isError=false) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "show" + (isError ? " error" : "");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ""; }, 3500);
+}
+</script>
+</body>
+</html>
