@@ -543,31 +543,111 @@ function fichaHTML(al, activos, calRow, ctx, grupo) {
   return html;
 }
 
-function selCal(btn) {
+async function selCal(btn) {
+
   const {ctx, grupo, num, asp, val} = btn.dataset;
-  // Actualizar buffer
-  if (!buf[ctx][grupo][num]) buf[ctx][grupo][num] = {};
-  // Toggle: si ya está seleccionado, deseleccionar
+
+  // Crear buffer si no existe
+  if (!buf[ctx][grupo][num]) {
+    buf[ctx][grupo][num] = {};
+  }
+
+  // Toggle
   const actual = buf[ctx][grupo][num][asp];
-  buf[ctx][grupo][num][asp] = (actual === val) ? "" : val;
+
+  buf[ctx][grupo][num][asp] =
+    (actual === val) ? "" : val;
+
   const nuevo = buf[ctx][grupo][num][asp];
 
-  // Actualizar botones de ese aspecto
-  btn.closest(".asp-btns").querySelectorAll(".asp-btn").forEach(b => {
-    b.classList.toggle("sel", b.dataset.val === nuevo && nuevo !== "");
-  });
+  // Actualizar visualmente botones
+  btn.closest(".asp-btns")
+    .querySelectorAll(".asp-btn")
+    .forEach(b => {
 
-  // Recalcular promedio
+      b.classList.toggle(
+        "sel",
+        b.dataset.val === nuevo && nuevo !== ""
+      );
+
+    });
+
+  // Recalcular promedio visual
   const lista = alumnos[grupo];
-  const al    = lista.find(a => a.numero.toString() === num);
+
+  const al = lista.find(
+    a => a.numero.toString() === num
+  );
+
   if (!al || !config) return;
-  const activos = (config.aspectosPorGrado[al.grado]) || {};
-  const prom    = calcProm(al, activos, buf[ctx][grupo][num]);
-  const el      = document.getElementById(`prom-${ctx}-${grupo}-${num}`);
+
+  const activos =
+    (config.aspectosPorGrado[al.grado]) || {};
+
+  const prom = calcProm(
+    al,
+    activos,
+    buf[ctx][grupo][num]
+  );
+
+  const el = document.getElementById(
+    `prom-${ctx}-${grupo}-${num}`
+  );
+
   if (el) {
+
     el.textContent = prom;
-    el.className   = "prom-val " + (prom==="—" ? "pend" : parseFloat(prom)>=7 ? "good" : "bad");
+
+    el.className =
+      "prom-val " +
+      (
+        prom === "—"
+          ? "pend"
+          : parseFloat(prom) >= 7
+            ? "good"
+            : "bad"
+      );
+
   }
+
+  // =========================
+  // GUARDADO AUTOMÁTICO
+  // =========================
+
+  try {
+
+    const sinodal =
+      ctx === "eval"
+        ? rolNum
+        : 0;
+
+    await post(
+      "saveCalificaciones",
+      {
+        sinodal,
+        grupo
+      },
+      buf[ctx][grupo]
+    );
+
+    // Actualizar concentrador automáticamente
+    if (ctx === "eval") {
+
+      await cargarConcentrador();
+
+    }
+
+  } catch(e) {
+
+    toast(
+      "Error guardando calificación",
+      true
+    );
+
+    console.error(e);
+
+  }
+
 }
 
 function calcProm(al, activos, calRow) {
