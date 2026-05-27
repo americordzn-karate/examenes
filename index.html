@@ -275,6 +275,16 @@ const gActivo = { eval:"A", prin:"A", conc:"A", alum:"A" };
 //  INICIALIZACIÓN
 // ══════════════════════════════════════════
 document.getElementById("api-in").value = API_URL;
+
+  fetch(API_URL + "?action=getConfig")
+.then(r => r.text())
+.then(t => {
+  console.log("RESPUESTA:", t);
+})
+.catch(err => {
+  console.error("ERROR FETCH:", err);
+});
+  
 if (API_URL) conectar();
 
 function guardarUrl() {
@@ -406,7 +416,10 @@ function switchGrupo(ctx, g, btn) {
 // ══════════════════════════════════════════
 async function get(action, params={}) {
   const qs = Object.entries({action,...params}).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join("&");
-  const res = await fetch(`${API_URL}?${qs}`);
+  const res = await fetch(`${API_URL}?${qs}`, {
+  method: "GET",
+  mode: "cors"
+});
   const txt = await res.text();
   let json;
   try { json = JSON.parse(txt); } catch(e) { throw new Error("Respuesta inválida del servidor"); }
@@ -419,7 +432,10 @@ async function post(action, params={}, payload=null) {
   const p = {...params, action};
   if (payload !== null) p.payload = encodeURIComponent(JSON.stringify(payload));
   const qs = Object.entries(p).map(([k,v])=>`${k}=${v}`).join("&");
-  const res = await fetch(`${API_URL}?${qs}`);
+  const res = await fetch(`${API_URL}?${qs}`, {
+  method: "POST",
+  mode: "cors"
+});
   const txt = await res.text();
   let json;
   try { json = JSON.parse(txt); } catch(e) { throw new Error("Respuesta inválida del servidor"); }
