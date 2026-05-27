@@ -260,6 +260,9 @@ let rolNum     = null;   // null=sin rol, 0=principal, N=sinodal N
 let config     = null;
 let sinodales  = [];
 
+const URL_PARAMS = new URLSearchParams(window.location.search);
+const SINODAL_URL = URL_PARAMS.get("sinodal");
+
 // buffers de calificaciones en memoria
 // buf[contexto][grupo][numAlumno][aspecto] = "M"|"R"|...
 const buf = { eval:{A:{},B:{}}, prin:{A:{},B:{}} };
@@ -289,6 +292,21 @@ async function conectar() {
     sinodales = sr.sinodales || [];
     document.getElementById("url-status").textContent = "✓ Conectado";
     mostrarSelectorRol();
+
+    if(SINODAL_URL){
+
+      rolNum = parseInt(SINODAL_URL);
+
+      aplicarRol();
+
+      const sel = document.getElementById("rol-sel");
+
+      if(sel){
+        sel.value = rolNum;
+        sel.disabled = true;
+      }
+
+    }
   } catch(e) {
     document.getElementById("url-status").textContent = "✗ Error de conexión";
     toast("No se pudo conectar con el Apps Script.", true);
@@ -602,22 +620,55 @@ function buildConcentrador(rows) {
 // ══════════════════════════════════════════
 //  ALUMNOS
 // ══════════════════════════════════════════
+
 async function cargarAlumnos() {
+
   const grupo = gActivo.alum;
   const wrap  = document.getElementById("alum-wrap");
+
   wrap.innerHTML = '<div class="loader">Cargando…</div>';
+
   try {
+
     const r = await get("getAlumnos", {grupo});
     const list = r.alumnos || [];
-    if (!list.length) { wrap.innerHTML = '<div class="loader">Sin alumnos presentes.</div>'; return; }
-    let h = `<table><thead><tr><th>#</th><th>Nombre</th><th>Grado</th></tr></thead><tbody>`;
-    list.forEach(a => { h += `<tr><td>${a.numero}</td><td>${a.nombre}</td><td>${a.grado}</td></tr>`; });
-    h += `</tbody></table>`;
-    wrap.innerHTML = h;
+
+    if (!list.length) {
+      wrap.innerHTML = '<div class="loader">Sin alumnos presentes.</div>';
+      return;
+    }
+
+    let html = '<div class="fichas-grid">';
+
+    list.forEach(a => {
+
+      html += `
+      <div class="ficha">
+        <div class="ficha-head">
+          <div>
+            <div class="fn">${a.nombre}</div>
+            <div class="fg">${a.grado}</div>
+          </div>
+
+          <div class="ficha-num">#${a.numero}</div>
+        </div>
+
+        <div class="ficha-footer">
+          <span class="prom-label">Alumno registrado</span>
+        </div>
+      </div>`;
+    });
+
+    html += '</div>';
+
+    wrap.innerHTML = html;
+
   } catch(e) {
+
     wrap.innerHTML = `<div class="loader err">Error: ${e.message}</div>`;
   }
 }
+
 
 // ══════════════════════════════════════════
 //  CONFIGURACIÓN — SINODALES
@@ -668,7 +719,22 @@ async function guardarSinodales() {
     await post("saveSinodales", {}, lista);
     sinodales = lista;
     toast("Sinodales guardados ✓");
-    mostrarSelectorRol(); // actualizar selector
+    mostrarSelectorRol();
+
+    if(SINODAL_URL){
+
+      rolNum = parseInt(SINODAL_URL);
+
+      aplicarRol();
+
+      const sel = document.getElementById("rol-sel");
+
+      if(sel){
+        sel.value = rolNum;
+        sel.disabled = true;
+      }
+
+    } // actualizar selector
   } catch(e) {
     toast("Error: " + e.message, true);
   }
