@@ -640,18 +640,24 @@ function buildConcentrador(rows) {
 async function cargarAlumnos() {
 
   const grupo = gActivo.alum;
-  const wrap  = document.getElementById("alum-wrap");
+
+  const wrap = document.getElementById("alum-wrap");
 
   wrap.innerHTML = '<div class="loader">Cargando…</div>';
 
   try {
 
     const r = await get("getAlumnos", {grupo});
+
     const list = r.alumnos || [];
 
     if (!list.length) {
-      wrap.innerHTML = '<div class="loader">Sin alumnos presentes.</div>';
+
+      wrap.innerHTML =
+        '<div class="loader">Sin alumnos presentes.</div>';
+
       return;
+
     }
 
     let html = '<div class="fichas-grid">';
@@ -660,18 +666,46 @@ async function cargarAlumnos() {
 
       html += `
       <div class="ficha">
+
         <div class="ficha-head">
+
           <div>
             <div class="fn">${a.nombre}</div>
             <div class="fg">${a.grado}</div>
           </div>
 
-          <div class="ficha-num">#${a.numero}</div>
+          <div class="ficha-num">
+            #${a.numero}
+          </div>
+
         </div>
 
-        <div class="ficha-footer">
-          <span class="prom-label">Alumno registrado</span>
+        <div class="ficha-body">
+
+          <label style="
+            display:flex;
+            align-items:center;
+            gap:8px;
+            font-size:.9rem;
+            font-weight:600;
+          ">
+
+            <input
+              type="checkbox"
+              ${a.presente !== false ? "checked" : ""}
+              onchange="toggleAsistencia(
+                '${grupo}',
+                '${a.numero}',
+                this.checked
+              )"
+            />
+
+            Presente
+
+          </label>
+
         </div>
+
       </div>`;
     });
 
@@ -681,8 +715,12 @@ async function cargarAlumnos() {
 
   } catch(e) {
 
-    wrap.innerHTML = `<div class="loader err">Error: ${e.message}</div>`;
+    wrap.innerHTML =
+      `<div class="loader err">
+        Error: ${e.message}
+      </div>`;
   }
+
 }
 
 
@@ -816,6 +854,29 @@ function toast(msg, isErr=false) {
   el.className   = "on" + (isErr ? " err" : "");
   if (_tt) clearTimeout(_tt);
   _tt = setTimeout(()=>{ el.className=""; }, 3500);
+}
+
+  async function toggleAsistencia(grupo, numero, presente){
+
+  try{
+
+    await post(
+      "saveAsistencia",
+      {grupo},
+      [{
+        numero: numero,
+        presente: presente
+      }]
+    );
+
+    toast("Asistencia actualizada ✓");
+
+  }catch(e){
+
+    toast("Error: " + e.message, true);
+
+  }
+
 }
 </script>
 </body>
