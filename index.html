@@ -275,17 +275,16 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 <header class="topbar">
   <div class="brand"><img src="https://raw.githubusercontent.com/americordzn-karate/retos/17eba3e9c50358ded081c3fe44bf64e6db2745ee/Escudo%20Circulo%20PNG.png" alt="Escudo" style="width:32px;height:32px;object-fit:contain"/><span style="margin-left:8px">Sistema de Evaluaciones Senshi-Kan</span></div>
   <nav class="tnav" id="tnav">
-    <button id="nb-eval" onclick="showView('v-eval')" class="on">Mi hoja</button>
-    <button id="nb-principal" onclick="showView('v-principal')" style="display:none">Principal</button>
-    <button id="nb-alumnos" onclick="showView('v-alumnos')" style="display:none">Alumnos</button>
-    <button id="nb-config" onclick="showView('v-config')" style="display:none">Configuración</button>
+    <button id="nb-principal" onclick="showView('v-principal')" style="display:none">🪪</button>
+    <button id="nb-alumnos" onclick="showView('v-alumnos')" style="display:none">🥋</button>
+    <button id="nb-config" onclick="showView('v-config')" style="display:none">⚙️</button>
   </nav>
 </header>
 
 <div id="banner-usuario">
   <div class="banner-inner">
     <div class="banner-texto">
-      <span class="banner-saludo">Bienvenido</span>
+      <span class="banner-saludo">Bienvenid@</span>
       <span class="banner-nombre" id="banner-nombre"></span>
     </div>
   </div>
@@ -295,7 +294,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
      VIEW: EVAL  — hoja del sinodal actual
 ═══════════════════════════════════════════ -->
 <section class="view on" id="v-eval">
-  <h2 class="stitle">Mi hoja de evaluación</h2>
+  <h2 class="stitle">Hoja de evaluación</h2>
   <div class="gtabs">
     <button class="gtab on" onclick="switchGrupo('eval','A',this)">Grupo A</button>
     <button class="gtab"    onclick="switchGrupo('eval','B',this)">Grupo B</button>
@@ -315,7 +314,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
      VIEW: PRINCIPAL  — eval + concentrador
 ═══════════════════════════════════════════ -->
 <section class="view" id="v-principal">
-  <h2 class="stitle">Mi hoja de evaluación</h2>
+  <h2 class="stitle">Hoja de evaluación</h2>
   <div class="gtabs">
     <button class="gtab on" onclick="switchGrupo('prin','A',this)">Grupo A</button>
     <button class="gtab"    onclick="switchGrupo('prin','B',this)">Grupo B</button>
@@ -402,7 +401,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
   <div class="card">
     <p style="font-size:.84rem;color:var(--ink3);margin-bottom:.75rem">Defina los sinodales. El Sinodal Principal tiene número 0 y acceso a todo. Los demás solo ven su propia hoja a través de su URL.</p>
     <table class="sin-table" id="sin-tbl">
-      <thead><tr><th style="width:70px">#</th><th>Nombre</th><th>URL de su página</th><th style="width:50px"></th></tr></thead>
+      <thead><tr><th style="width:70px">#</th><th>Nombre</th><th>Token</th><th style="width:50px"></th></tr></thead>
       <tbody id="sin-tbody"></tbody>
     </table>
     <button class="btn btn-ghost" onclick="addSinodalRow()">＋ Agregar sinodal</button>
@@ -437,7 +436,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 // ══════════════════════════════════════════
 const API_DEFAULT = "https://script.google.com/macros/s/AKfycby5TZOYesefauZ_OaBFtYtwaZLpiqLFKxouxctiDOcjgakYRd--birOiIatJPUTV7Wgrg/exec";
 const ASPECTOS    = ["Kata","Bunkai","Tecnica Basica","Kumite","Teoria"];
-const ASP_LABEL   = ["Kata","Bunkai","Téc. Básica","Kumite","Teoría"];
+const ASP_LABEL   = ["Kata","Bunkai","T. Básica","Kumite","Teoría"];
 const GRADOS      = ["10 Kyu","9 Kyu","8 Kyu","7 Kyu","6 Kyu","5 Kyu","4 Kyu","3 Kyu","2 Kyu","1 Kyu"];
 const ESCALA      = ["M","R","B","MB","E"];
 const VALS        = {M:6,R:7,B:8,MB:9,E:10};
@@ -601,7 +600,7 @@ function showView(id) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("on"));
   document.getElementById(id).classList.add("on");
   document.querySelectorAll(".tnav button").forEach(b => b.classList.remove("on"));
-  const map = {"v-eval":"nb-eval","v-principal":"nb-principal","v-alumnos":"nb-alumnos","v-config":"nb-config"};
+  const map = {"v-principal":"nb-principal","v-alumnos":"nb-alumnos","v-config":"nb-config"};
   const btn = document.getElementById(map[id]);
   if (btn) btn.classList.add("on");
 }
@@ -707,7 +706,7 @@ function buildFichas(lista, cals, cfg, ctx, grupo) {
 function fichaHTML(al, activos, calRow, ctx, grupo) {
   const num = al.numero.toString();
   let html = `
-  <div class="ficha" id="ficha-${ctx}-${grupo}-${num}">
+  <div class="ficha collapsed" id="ficha-${ctx}-${grupo}-${num}">
     <div class="ficha-head" onclick="toggleFicha(this)">
       <div>
         <div class="fn">${al.nombre}<span class="ficha-toggle-icon">▼</span></div>
