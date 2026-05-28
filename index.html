@@ -110,10 +110,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--ink);min-height:10
 .view{display:none;padding:1.5rem;max-width:1100px;margin:0 auto}
 .view.on{display:block}
 
-/* API SETUP BAR */
-.setup-bar{background:var(--gold-l);border:1px solid #e0c060;border-radius:var(--radius);padding:10px 14px;margin-bottom:1.25rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.84rem}
-.setup-bar input{flex:1;min-width:200px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:.84rem}
-.setup-bar button{background:var(--ink);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-family:var(--font);font-size:.82rem;cursor:pointer}
+/* BANNER BIENVENIDA */
+#banner-usuario{display:none;max-width:1100px;margin:.75rem auto 0;padding:0 1.5rem}
+.banner-inner{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 20px;display:flex;align-items:center;gap:14px}
+.banner-escudo{width:52px;height:52px;object-fit:contain;flex-shrink:0}
+.banner-texto{display:flex;flex-direction:column;gap:2px}
+.banner-saludo{font-size:.78rem;color:var(--ink3);font-weight:500}
+.banner-nombre{font-family:var(--font-h);font-size:1.1rem;font-weight:700;color:var(--ink)}
 
 /* SECTION TITLE */
 .stitle{font-family:var(--font-h);font-size:1.15rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;color:var(--ink)}
@@ -201,6 +204,10 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 .cg-cell:last-child{border-right:none}
 .cg-cell input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--red)}
 
+/* CÍRCULO DE CINTA */
+.cinta{width:36px;height:36px;border-radius:50%;flex-shrink:0;border:2px solid rgba(0,0,0,.15);position:relative;overflow:hidden}
+.cinta-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(0,0,0,.15)}
+
 /* SINODALES TABLE */
 .sin-table{width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:1rem}
 .sin-table th{background:var(--bg);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--border)}
@@ -234,7 +241,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 </div>
 
 <header class="topbar">
-  <div class="brand"><span class="k">空手</span>Sistema de Evaluación de Karate</div>
+  <div class="brand"><img src="https://raw.githubusercontent.com/americordzn-karate/retos/17eba3e9c50358ded081c3fe44bf64e6db2745ee/Escudo%20Circulo%20PNG.png" alt="Escudo" style="width:32px;height:32px;object-fit:contain"/><span style="margin-left:8px">Sistema de Evaluaciones Senshi-Kan</span></div>
   <nav class="tnav" id="tnav">
     <button id="nb-eval" onclick="showView('v-eval')" class="on">Mi hoja</button>
     <button id="nb-principal" onclick="showView('v-principal')" style="display:none">Principal</button>
@@ -243,13 +250,12 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
   </nav>
 </header>
 
-<!-- SETUP BAR (visible solo en vista eval para sinodales normales, y en config) -->
-<div style="max-width:1100px;margin:.75rem auto 0;padding:0 1.5rem" id="setup-zone">
-  <div class="setup-bar">
-    <span style="font-weight:600;white-space:nowrap">🔗 URL Apps Script:</span>
-    <input id="api-in" type="text" placeholder="https://script.google.com/macros/s/AKfycby5TZOYesefauZ_OaBFtYtwaZLpiqLFKxouxctiDOcjgakYRd--birOiIatJPUTV7Wgrg/exec"/>
-    <button onclick="guardarUrl()">Conectar</button>
-    <span id="url-status" style="font-size:.8rem;color:var(--ink3)"></span>
+<div id="banner-usuario">
+  <div class="banner-inner">
+    <div class="banner-texto">
+      <span class="banner-saludo">Bienvenido</span>
+      <span class="banner-nombre" id="banner-nombre"></span>
+    </div>
   </div>
 </div>
 
@@ -299,6 +305,46 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
      VIEW: ALUMNOS
 ═══════════════════════════════════════════ -->
 <section class="view" id="v-alumnos">
+  <h2 class="stitle">Agregar Alumno</h2>
+  <div class="card" style="margin-bottom:1.25rem">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div style="display:flex;flex-direction:column;gap:4px;flex:2;min-width:180px">
+        <label style="font-size:.78rem;font-weight:600;color:var(--ink2)">Nombre</label>
+        <input id="nuevo-nombre" type="text" placeholder="NOMBRE DEL ALUMNO"
+          style="border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-family:var(--font);font-size:.9rem;text-transform:uppercase"
+          oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:110px">
+        <label style="font-size:.78rem;font-weight:600;color:var(--ink2)">Grado (Kyu)</label>
+        <select id="nuevo-grado"
+          style="border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-family:var(--font);font-size:.9rem;background:var(--white)">
+          <option value="">-- Grado --</option>
+          <option value="10 Kyu">10</option>
+          <option value="9 Kyu">9</option>
+          <option value="8 Kyu">8</option>
+          <option value="7 Kyu">7</option>
+          <option value="6 Kyu">6</option>
+          <option value="5 Kyu">5</option>
+          <option value="4 Kyu">4</option>
+          <option value="3 Kyu">3</option>
+          <option value="2 Kyu">2</option>
+          <option value="1 Kyu">1</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:110px">
+        <label style="font-size:.78rem;font-weight:600;color:var(--ink2)">Grupo</label>
+        <select id="nuevo-grupo"
+          style="border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-family:var(--font);font-size:.9rem;background:var(--white)">
+          <option value="A">Grupo A</option>
+          <option value="B">Grupo B</option>
+        </select>
+      </div>
+      <button class="btn btn-red" onclick="agregarAlumno()" style="height:40px;align-self:flex-end">
+        ＋ Agregar
+      </button>
+    </div>
+  </div>
+
   <h2 class="stitle">Listado General de Alumnos</h2>
   <div class="gtabs">
     <button class="gtab on" onclick="switchGrupo('alum','A',this)">Grupo A</button>
@@ -374,7 +420,30 @@ const alumnos = { A:[], B:[] };
 const gActivo = { eval:"A", prin:"A", conc:"A", alum:"A" };
 
 // ══════════════════════════════════════════
-//  INICIALIZACIÓN
+//  CÍRCULO DE CINTA POR GRADO
+// ══════════════════════════════════════════
+const CINTA_COLORES = {
+  "10 Kyu": { bg: "#ffffff" },
+  "9 Kyu":  { bg: "#ffffff", inner: "#f5d000" },
+  "8 Kyu":  { bg: "#f5d000" },
+  "7 Kyu":  { bg: "#f5831f" },
+  "6 Kyu":  { bg: "#2e8b3a" },
+  "5 Kyu":  { bg: "#2e8b3a", inner: "#1a5fa8" },
+  "4 Kyu":  { bg: "#1a5fa8" },
+  "3 Kyu":  { bg: "#1a5fa8", inner: "#c0392b" },
+  "2 Kyu":  { bg: "#6b3a1f" },
+  "1 Kyu":  { bg: "#6b3a1f", inner: "#111111" }
+};
+
+function cintaHTML(grado) {
+  const c = CINTA_COLORES[grado] || { bg: "#cccccc" };
+  const inner = c.inner
+    ? `<div class="cinta-inner" style="background:${c.inner}"></div>`
+    : "";
+  return `<div class="cinta" style="background:${c.bg}" title="${grado}">${inner}</div>`;
+}
+
+// ══════════════════════════════════════════
 
 async function iniciarSistema(){
 
@@ -415,85 +484,21 @@ async function iniciarSistema(){
 }
   
 // ══════════════════════════════════════════
-document.getElementById("api-in").value = API_URL;
 
-  fetch(API_URL + "?action=getConfig")
-.then(r => r.text())
-.then(t => {
-  console.log("RESPUESTA:", t);
-})
-.catch(err => {
-  console.error("ERROR FETCH:", err);
-});
-  
 // El sistema iniciará después del login
 
-function guardarUrl() {
-  API_URL = document.getElementById("api-in").value.trim();
-  localStorage.setItem("k_api", API_URL);
-  conectar();
-}
-
-async function conectar(autoRol = true) {
-  document.getElementById("url-status").textContent = "Conectando…";
+async function conectar() {
   try {
     const r = await get("getConfig");
     config = r;
     const sr = await get("getSinodales");
     sinodales = sr.sinodales || [];
-    document.getElementById("url-status").textContent = "✓ Conectado";
-    // Selector deshabilitado.
-// El rol ahora se determina por token.
-
-    
   } catch(e) {
-    document.getElementById("url-status").textContent = "✗ Error de conexión";
     toast("No se pudo conectar con el Apps Script.", true);
   }
 }
 
-function mostrarSelectorRol() {
-  // Si ya hay selector lo removemos
-  const prev = document.getElementById("rol-sel-wrap");
-  if (prev) prev.remove();
 
-  const wrap = document.createElement("div");
-  wrap.id = "rol-sel-wrap";
-  wrap.style.cssText = "display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;";
-
-  const lbl = document.createElement("span");
-  lbl.textContent = "Seleccione su rol:";
-  lbl.style.cssText = "font-size:.84rem;font-weight:600";
-
-  const sel = document.createElement("select");
-  sel.id = "rol-sel";
-  sel.style.cssText = "border:1px solid #ccc;border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:.84rem";
-
-  const optDef = document.createElement("option");
-  optDef.value = ""; optDef.text = "-- Seleccionar --";
-  sel.add(optDef);
-
-  const optP = document.createElement("option");
-  optP.value = "0"; optP.text = "Sinodal Principal";
-  sel.add(optP);
-
-  sinodales.forEach(s => {
-    const o = document.createElement("option");
-    o.value = s.numero; o.text = "Sinodal " + s.numero + " — " + s.nombre;
-    sel.add(o);
-  });
-
-  sel.onchange = () => {
-    const v = sel.value;
-    if (v === "") return;
-    rolNum = parseInt(v);
-    aplicarRol();
-  };
-
-  wrap.appendChild(lbl);
-  wrap.appendChild(sel);
-  document.getElementById("setup-zone").appendChild(wrap);
-}
 
 function aplicarRol() {
 
@@ -663,7 +668,10 @@ function fichaHTML(al, activos, calRow, ctx, grupo) {
         <div class="fn">${al.nombre}</div>
         <div class="fg">${al.grado}</div>
       </div>
-      <div class="ficha-num">#${al.numero}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${cintaHTML(al.grado)}
+        <div class="ficha-num">#${al.numero}</div>
+      </div>
     </div>
     <div class="ficha-body">`;
 
@@ -915,8 +923,9 @@ async function cargarAlumnos() {
             <div class="fg">${a.grado}</div>
           </div>
 
-          <div class="ficha-num">
-            #${a.numero}
+          <div style="display:flex;align-items:center;gap:8px">
+            ${cintaHTML(a.grado)}
+            <div class="ficha-num">#${a.numero}</div>
           </div>
 
         </div>
@@ -1018,7 +1027,7 @@ async function guardarSinodales() {
 
     if (nom) {
       lista.push({
-        numero: parseInt(num) || lista.length + 1,
+        numero: num !== "" ? parseInt(num) : lista.length + 1,
         nombre: nom,
         url
       });
@@ -1034,15 +1043,7 @@ async function guardarSinodales() {
 
     toast("Sinodales guardados ✓");
 
-    // Selector manual deshabilitado.
-    // El acceso ahora funciona por token.
 
-    const sel = document.getElementById("rol-sel");
-
-    if (sel) {
-      sel.value = rolNum;
-      sel.disabled = true;
-    }
 
   } catch (e) {
 
@@ -1114,7 +1115,41 @@ function toast(msg, isErr=false) {
   _tt = setTimeout(()=>{ el.className=""; }, 3500);
 }
 
-  async function toggleAsistencia(grupo, numero, presente){
+  // ══════════════════════════════════════════
+//  AGREGAR ALUMNO
+// ══════════════════════════════════════════
+async function agregarAlumno() {
+  const nombre = document.getElementById("nuevo-nombre").value.trim().toUpperCase();
+  const grado  = document.getElementById("nuevo-grado").value;
+  const grupo  = document.getElementById("nuevo-grupo").value;
+
+  if (!nombre) { toast("Ingrese el nombre del alumno.", true); return; }
+  if (!grado)  { toast("Seleccione el grado del alumno.", true); return; }
+
+  const btn = document.querySelector("#v-alumnos .btn-red");
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+
+  try {
+    await post("addAlumno", {grupo}, {nombre, grado});
+    toast("Alumno agregado ✓");
+    document.getElementById("nuevo-nombre").value = "";
+    document.getElementById("nuevo-grado").value  = "";
+    // Sincronizar grupo activo con el seleccionado y recargar
+    gActivo.alum = grupo;
+    document.querySelectorAll("#v-alumnos .gtab").forEach((b, i) => {
+      b.classList.toggle("on", (i === 0 && grupo === "A") || (i === 1 && grupo === "B"));
+    });
+    await cargarAlumnos();
+  } catch(e) {
+    toast("Error: " + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "＋ Agregar";
+  }
+}
+
+async function toggleAsistencia(grupo, numero, presente){
 
   try{
 
@@ -1223,9 +1258,11 @@ if(!testJson || !testJson.sinodales){
     );
 
     // Ocultar login
-    document.getElementById(
-      "login-screen"
-    ).style.display = "none";
+    document.getElementById("login-screen").style.display = "none";
+
+    // Mostrar banner con nombre
+    document.getElementById("banner-nombre").textContent = sinodal.nombre;
+    document.getElementById("banner-usuario").style.display = "block";
 
     // Aplicar permisos
     aplicarPermisos();
