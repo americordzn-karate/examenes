@@ -388,7 +388,8 @@ async function iniciarSistema(){
 
   function aplicarPermisos(){
 
-  const esAdmin = rolNum === 0;
+  const esAdmin =
+  parseInt(rolNum,10) === 0;
 
   // Selector de roles
   const sel =
@@ -437,7 +438,7 @@ function guardarUrl() {
   conectar();
 }
 
-async function conectar() {
+async function conectar(autoRol = true) {
   document.getElementById("url-status").textContent = "Conectando…";
   try {
     const r = await get("getConfig");
@@ -500,7 +501,8 @@ function mostrarSelectorRol() {
 
 function aplicarRol() {
 
-  const esPrincipal = rolNum === 0;
+  const esPrincipal =
+  parseInt(rolNum,10) === 0;
 
   // Tabs admin
   document.getElementById("nb-principal")
@@ -1141,7 +1143,7 @@ function toast(msg, isErr=false) {
   try{
 
     // Conectar primero
-await conectar();
+await conectar(false);
 
 // Buscar token en tabla de sinodales
 const sinodal =
@@ -1167,7 +1169,12 @@ if(!sinodal){
 
 usuarioActual = sinodal;
 
-rolNum = Number(sinodal.numero);
+rolNum = parseInt(sinodal.numero,10);
+    console.log(
+  "ROL FINAL:",
+  rolNum,
+  typeof rolNum
+);
 
     tokenActual = token;
 
