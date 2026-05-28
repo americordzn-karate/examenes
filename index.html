@@ -1164,11 +1164,10 @@ function toast(msg, isErr=false) {
 
     const pingJson = await ping.json();
 
-    if(!pingJson.ok){
-
-      throw new Error("Sin conexión");
-
-    }
+    // Validación flexible de conexión
+if(!pingJson || pingJson.error){
+  throw new Error("Sin conexión");
+}
 
     // Guardar API
     API_URL = api;
