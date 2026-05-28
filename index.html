@@ -1018,11 +1018,7 @@ async function guardarSinodales() {
     toast("Sinodales guardados ✓");
     mostrarSelectorRol();
 
-    if(SINODAL_URL){
-
-      rolNum = parseInt(SINODAL_URL);
-
-      aplicarRol();
+    
 
       const sel = document.getElementById("rol-sel");
 
