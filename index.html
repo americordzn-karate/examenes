@@ -208,6 +208,24 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 .cinta{width:36px;height:36px;border-radius:50%;flex-shrink:0;border:2px solid rgba(0,0,0,.15);position:relative;overflow:hidden}
 .cinta-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(0,0,0,.15)}
 
+/* FICHA COLAPSABLE */
+.ficha-head{cursor:pointer;user-select:none}
+.ficha-head:hover{filter:brightness(1.15)}
+.ficha-body{transition:max-height .25s ease, opacity .25s ease, padding .25s ease;overflow:hidden;max-height:600px;opacity:1}
+.ficha.collapsed .ficha-body{max-height:0;opacity:0;padding-top:0;padding-bottom:0}
+.ficha.collapsed .ficha-footer{border-top:none}
+.ficha-toggle-icon{font-size:.7rem;opacity:.6;margin-left:6px;transition:transform .25s}
+.ficha.collapsed .ficha-toggle-icon{transform:rotate(-90deg)}
+
+/* DESTACADOS */
+.destacados-grid{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem}
+.dest-card{background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:14px 18px;display:flex;align-items:center;gap:14px;min-width:220px;flex:1}
+.dest-medal{font-size:1.6rem;line-height:1;flex-shrink:0}
+.dest-info{display:flex;flex-direction:column;gap:2px;flex:1}
+.dest-nombre{font-family:var(--font-h);font-size:.95rem;font-weight:700;color:var(--ink)}
+.dest-grado{font-size:.76rem;color:var(--ink3)}
+.dest-prom{font-family:var(--font-h);font-size:1.5rem;font-weight:700;color:var(--green);margin-left:auto}
+
 /* SINODALES TABLE */
 .sin-table{width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:1rem}
 .sin-table th{background:var(--bg);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--border)}
@@ -263,6 +281,10 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
      VIEW: EVAL  — hoja del sinodal actual
 ═══════════════════════════════════════════ -->
 <section class="view on" id="v-eval">
+  <h2 class="stitle">🏅 EXÁMENES DESTACADOS</h2>
+  <div id="destacados-eval-wrap"><div class="loader">Cargando…</div></div>
+
+  <hr class="div"/>
   <div class="gtabs">
     <button class="gtab on" onclick="switchGrupo('eval','A',this)">Grupo A</button>
     <button class="gtab"    onclick="switchGrupo('eval','B',this)">Grupo B</button>
@@ -288,6 +310,10 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
     <button class="btn btn-red" onclick="guardarCals('prin')">💾 Guardar calificaciones</button>
     <button class="btn btn-ghost" onclick="cargarPrincipal()">🔄 Recargar</button>
   </div>
+
+  <hr class="div"/>
+  <h2 class="stitle">🏅 EXÁMENES DESTACADOS</h2>
+  <div id="destacados-prin-wrap"><div class="loader">Cargando…</div></div>
 
   <hr class="div"/>
   <h2 class="stitle">Concentrador</h2>
@@ -534,6 +560,8 @@ function aplicarRol() {
 
     cargarAlumnos();
 
+    cargarDestacados("destacados-prin-wrap");
+
   }
 
   // Sinodales normales
@@ -545,6 +573,8 @@ function aplicarRol() {
     showView("v-eval");
 
     cargarEval();
+
+    cargarDestacados("destacados-eval-wrap");
 
   }
 
@@ -663,9 +693,9 @@ function fichaHTML(al, activos, calRow, ctx, grupo) {
   const num = al.numero.toString();
   let html = `
   <div class="ficha" id="ficha-${ctx}-${grupo}-${num}">
-    <div class="ficha-head">
+    <div class="ficha-head" onclick="toggleFicha(this)">
       <div>
-        <div class="fn">${al.nombre}</div>
+        <div class="fn">${al.nombre}<span class="ficha-toggle-icon">▼</span></div>
         <div class="fg">${al.grado}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -793,11 +823,12 @@ async function selCal(btn) {
       buf[ctx][grupo]
     );
 
-    // Actualizar concentrador automáticamente
+    // Actualizar concentrador y destacados automáticamente
     if (ctx === "eval") {
-
       await cargarConcentrador();
-
+      cargarDestacados("destacados-eval-wrap");
+    } else {
+      cargarDestacados("destacados-prin-wrap");
     }
 
   } catch(e) {
@@ -1115,8 +1146,60 @@ function toast(msg, isErr=false) {
   _tt = setTimeout(()=>{ el.className=""; }, 3500);
 }
 
-  // ══════════════════════════════════════════
-//  AGREGAR ALUMNO
+  function toggleFicha(head) {
+  head.closest(".ficha").classList.toggle("collapsed");
+}
+
+// ══════════════════════════════════════════
+//  EXÁMENES DESTACADOS
+// ══════════════════════════════════════════
+const MEDALLAS = ["🥇","🥈","🥉","4️⃣","5️⃣"];
+
+async function cargarDestacados(wrapId) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="loader">Cargando…</div>';
+  try {
+    const [rA, rB] = await Promise.all([
+      get("getConcentrador", {grupo:"A"}),
+      get("getConcentrador", {grupo:"B"})
+    ]);
+    const todos = [
+      ...(rA.concentrador || []),
+      ...(rB.concentrador || [])
+    ];
+    const conProm = todos
+      .filter(r => r["Promedio Final"] !== "" && r["Promedio Final"] !== undefined)
+      .map(r => ({...r, _prom: parseFloat(r["Promedio Final"])}))
+      .sort((a, b) => b._prom - a._prom)
+      .slice(0, 5);
+
+    wrap.innerHTML = buildDestacados(conProm);
+  } catch(e) {
+    wrap.innerHTML = `<div class="loader err">Error: ${e.message}</div>`;
+  }
+}
+
+function buildDestacados(lista) {
+  if (!lista.length) return '<div class="loader">Sin calificaciones registradas aún.</div>';
+  let html = '<div class="destacados-grid">';
+  lista.forEach((r, i) => {
+    const cls = r._prom >= 9 ? "good" : r._prom >= 7 ? "" : "bad";
+    html += `
+    <div class="dest-card">
+      <div class="dest-medal">${MEDALLAS[i]}</div>
+      <div class="dest-info">
+        <div class="dest-nombre">${r.Nombre || "—"}</div>
+        <div class="dest-grado">${r.Grado || ""}</div>
+      </div>
+      <div class="dest-prom prom-val ${cls}">${r._prom.toFixed(2)}</div>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+
 // ══════════════════════════════════════════
 async function agregarAlumno() {
   const nombre = document.getElementById("nuevo-nombre").value.trim().toUpperCase();
