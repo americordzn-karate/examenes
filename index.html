@@ -1193,7 +1193,6 @@ function toast(msg, isErr=false) {
 
     }
 
-    // Guardar usuario
     usuarioActual = sinodal;
 
     rolNum = parseInt(
@@ -1216,7 +1215,7 @@ function toast(msg, isErr=false) {
     // Aplicar permisos
     aplicarPermisos();
 
-    // Cargar sistema
+    // Iniciar sistema
     await iniciarSistema();
 
   }catch(e){
