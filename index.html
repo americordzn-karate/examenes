@@ -1158,14 +1158,10 @@ function toast(msg, isErr=false) {
     // Verificar conexión
     const api = API_URL.trim();
 
-    const ping = await fetch(
-      `${api}?action=ping`
-    );
+    const test = await fetch(`${api}?action=getSinodales`);
+const testJson = await test.json();
 
-    const pingJson = await ping.json();
-
-    // Validación flexible de conexión
-if(!pingJson || pingJson.error){
+if(!testJson || !testJson.sinodales){
   throw new Error("Sin conexión");
 }
 
