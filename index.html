@@ -1001,35 +1001,55 @@ function addSinodalRow(s) {
 }
 
 async function guardarSinodales() {
-  const rows  = document.querySelectorAll("#sin-tbody tr");
+
+  const rows = document.querySelectorAll("#sin-tbody tr");
+
   const lista = [];
+
   rows.forEach(tr => {
+
     const inputs = tr.querySelectorAll("input");
-    const num    = inputs[0].value.trim();
-    const nom    = inputs[1].value.trim();
-    const url    = inputs[2].value.trim();
-    if (nom) lista.push({numero: parseInt(num)||lista.length+1, nombre:nom, url});
+
+    const num = inputs[0].value.trim();
+
+    const nom = inputs[1].value.trim();
+
+    const url = inputs[2].value.trim();
+
+    if (nom) {
+      lista.push({
+        numero: parseInt(num) || lista.length + 1,
+        nombre: nom,
+        url
+      });
+    }
+
   });
+
   try {
+
     await post("saveSinodales", {}, lista);
+
     sinodales = lista;
+
     toast("Sinodales guardados ✓");
+
     // Selector manual deshabilitado.
-// El acceso ahora funciona por token.
+    // El acceso ahora funciona por token.
 
-    
+    const sel = document.getElementById("rol-sel");
 
-      const sel = document.getElementById("rol-sel");
+    if (sel) {
+      sel.value = rolNum;
+      sel.disabled = true;
+    }
 
-      if(sel){
-        sel.value = rolNum;
-        sel.disabled = true;
-      }
+  } catch (e) {
 
-    } // actualizar selector
-  } catch(e) {
     toast("Error: " + e.message, true);
+
   }
+
 }
 
 // ══════════════════════════════════════════
