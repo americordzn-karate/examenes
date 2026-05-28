@@ -295,10 +295,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
      VIEW: EVAL  — hoja del sinodal actual
 ═══════════════════════════════════════════ -->
 <section class="view on" id="v-eval">
-  <h2 class="stitle">🏅 EXÁMENES DESTACADOS</h2>
-  <div id="destacados-eval-wrap"><div class="loader">Cargando…</div></div>
-
-  <hr class="div"/>
+  <h2 class="stitle">Mi hoja de evaluación</h2>
   <div class="gtabs">
     <button class="gtab on" onclick="switchGrupo('eval','A',this)">Grupo A</button>
     <button class="gtab"    onclick="switchGrupo('eval','B',this)">Grupo B</button>
@@ -308,6 +305,10 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
     <button class="btn btn-red" onclick="guardarCals('eval')">💾 Guardar calificaciones</button>
     <button class="btn btn-ghost" onclick="cargarEval()">🔄 Recargar</button>
   </div>
+
+  <hr class="div"/>
+  <h2 class="stitle">🏅 EXÁMENES DESTACADOS</h2>
+  <div id="destacados-eval-wrap"><div class="loader">Cargando…</div></div>
 </section>
 
 <!-- ══════════════════════════════════════════
