@@ -426,7 +426,27 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
       <button class="btn btn-ghost" onclick="cargarConfig()">🔄 Recargar</button>
     </div>
   </div>
+
+  <h2 class="stitle" style="color:var(--red)">⚠️ Zona de peligro</h2>
+  <div class="card" style="border-color:#f5c6c2">
+    <p style="font-size:.84rem;color:var(--ink3);margin-bottom:.75rem">Borra todas las calificaciones de los sinodales y los concentradores. <strong>El listado de alumnos no se verá afectado.</strong> Esta acción no puede deshacerse.</p>
+    <button class="btn btn-red" onclick="confirmarResetExamen()">🗑️ Limpiar calificaciones para nuevo examen</button>
+  </div>
 </section>
+
+
+<!-- MODAL CONFIRMACIÓN RESET -->
+<div id="modal-reset" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px 30px;width:340px;box-shadow:0 10px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:var(--font-h);font-size:1.1rem;color:var(--red);font-weight:700">¿Confirmar limpieza?</div>
+    <p style="font-size:.86rem;color:var(--ink2);line-height:1.5">Se eliminarán <strong>todas las calificaciones</strong> de todos los sinodales y los concentradores. El listado de alumnos se conservará intacto.</p>
+    <p style="font-size:.82rem;color:var(--ink3)">Esta acción <strong>no puede deshacerse</strong>.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="cerrarModalReset()">Cancelar</button>
+      <button class="btn btn-red" id="btn-reset-confirm" onclick="ejecutarResetExamen()">🗑️ Sí, limpiar todo</button>
+    </div>
+  </div>
+</div>
 
 <div id="toast"></div>
 
@@ -1350,6 +1370,40 @@ async function toggleAsistencia(grupo, numero, presente){
   }
 
 }
+// ══════════════════════════════════════════
+//  RESET EXAMEN
+// ══════════════════════════════════════════
+function confirmarResetExamen() {
+  const modal = document.getElementById("modal-reset");
+  modal.style.display = "flex";
+}
+
+function cerrarModalReset() {
+  document.getElementById("modal-reset").style.display = "none";
+}
+
+async function ejecutarResetExamen() {
+  const btn = document.getElementById("btn-reset-confirm");
+  btn.disabled = true;
+  btn.textContent = "Limpiando…";
+  try {
+    const r = await get("resetExamen");
+    cerrarModalReset();
+    toast(r.message || "Calificaciones eliminadas ✓");
+    // Limpiar buffers en memoria
+    ["A","B"].forEach(g => {
+      buf.eval[g] = {};
+      buf.prin[g] = {};
+    });
+  } catch(e) {
+    cerrarModalReset();
+    toast("Error: " + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🗑️ Sí, limpiar todo";
+  }
+}
+
 </script>
 </body>
 </html>
