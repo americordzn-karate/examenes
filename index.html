@@ -7,6 +7,8 @@
   <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/americordzn-karate/examenes/refs/heads/main/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   .login-screen{
 
@@ -84,6 +86,13 @@
   color:red;
   text-align:center;
 
+}
+
+#token-display:focus-within,
+#token-display.focused {
+  border-color: #111827;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(17,24,39,0.12);
 }
 :root{
   --red:#c0392b;--red-d:#922b21;--red-l:#fdf0ef;
@@ -250,11 +259,41 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
       Acceso de Sinodales
     </h2>
 
+    <!-- Campo visual con máscara de emojis -->
+    <div id="token-display"
+      onclick="document.getElementById('token-real').focus()"
+      style="
+        padding:14px;
+        border-radius:10px;
+        border:1px solid #ccc;
+        font-size:1.2rem;
+        min-height:50px;
+        cursor:text;
+        background:#fff;
+        letter-spacing:2px;
+        color:#333;
+        transition:border-color .2s;
+        position:relative;
+        line-height:1.4;
+        word-break:break-all;
+      "
+    ><span id="token-placeholder" style="color:#aaa;font-size:.95rem;letter-spacing:0">Ingrese su token Senshi-Kan</span></div>
+
+    <!-- Input real oculto que captura las teclas -->
     <input
-      id="token-input"
+      id="token-real"
       type="text"
-      placeholder="Ingrese su token Senshi-Kan"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+      style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;"
+      oninput="actualizarTokenDisplay()"
+      onkeydown="if(event.key==='Enter') loginToken()"
     />
+
+    <!-- Input de compatibilidad para loginToken() -->
+    <input id="token-input" type="hidden" />
 
     <button onclick="loginToken()">
       Entrar
@@ -339,6 +378,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
   <div class="card tbl-wrap" id="conc-wrap"><div class="loader">Cargando…</div></div>
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="cargarConcentrador()">🔄 Actualizar concentrador</button>
+    <button class="btn btn-dark" onclick="generarPDFConcentrador()">📄 Exportar PDF</button>
   </div>
 </section>
 
@@ -1289,6 +1329,38 @@ async function toggleAsistencia(grupo, numero, presente){
   }
 
 }
+// ══════════════════════════════════════════
+//  CAMPO TOKEN CON MÁSCARA DE EMOJIS 🥷🏼
+// ══════════════════════════════════════════
+function actualizarTokenDisplay() {
+  const real = document.getElementById("token-real");
+  const display = document.getElementById("token-display");
+  const placeholder = document.getElementById("token-placeholder");
+  const hidden = document.getElementById("token-input");
+
+  const val = real.value;
+  hidden.value = val; // sincronizar con el input oculto que usa loginToken()
+
+  if (val.length === 0) {
+    display.innerHTML = '<span id="token-placeholder" style="color:#aaa;font-size:.95rem;letter-spacing:0">Ingrese su token Senshi-Kan</span>';
+  } else {
+    // Cada carácter → emoji 🥷🏼 (el tono de piel usa dos code points, los contamos como uno)
+    const NINJA = "🥷🏼";
+    display.textContent = NINJA.repeat(val.length);
+  }
+}
+
+// Hacer clic en el div visual → enfocar el input oculto
+document.addEventListener("DOMContentLoaded", () => {
+  const display = document.getElementById("token-display");
+  const real = document.getElementById("token-real");
+  if (!display || !real) return;
+
+  display.addEventListener("click", () => real.focus());
+  real.addEventListener("focus",  () => display.classList.add("focused"));
+  real.addEventListener("blur",   () => display.classList.remove("focused"));
+});
+
   async function loginToken(){
 
   const token = document.getElementById("token-input").value.trim();
@@ -1371,6 +1443,276 @@ async function toggleAsistencia(grupo, numero, presente){
   }
 
 }
+// ══════════════════════════════════════════
+//  EXPORTAR PDF CONCENTRADOR
+// ══════════════════════════════════════════
+async function generarPDFConcentrador() {
+  const { jsPDF } = window.jspdf;
+  const grupo = gActivo.conc;
+
+  // 1. Obtener datos frescos
+  let rows = [];
+  try {
+    const r = await get("getConcentrador", { grupo });
+    rows = r.concentrador || [];
+  } catch(e) {
+    toast("Error al obtener datos: " + e.message, true);
+    return;
+  }
+  if (!rows.length) { toast("No hay datos en el concentrador.", true); return; }
+
+  // 2. Crear documento VERTICAL (portrait) carta
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
+  const PW = doc.internal.pageSize.getWidth();   // 215.9 mm
+  const PH = doc.internal.pageSize.getHeight();  // 279.4 mm
+  const ML = 10, MR = 10; // márgenes laterales
+
+  // ── COLORES ──
+  const INK    = [17,  24,  39];
+  const RED    = [192,  57,  43];
+  const GOLD   = [184, 134,  11];
+  const GREEN  = [26,  122,  60];
+  const WHITE  = [255, 255, 255];
+  const BLACK  = [0,   0,   0  ];
+  const HDR_BG = [240, 240, 240]; // gris claro
+  const BORDER = [200, 200, 200];
+
+  // ── LOGO ──
+  const LOGO_URL = "https://raw.githubusercontent.com/americordzn-karate/retos/17eba3e9c50358ded081c3fe44bf64e6db2745ee/Escudo%20Circulo%20PNG.png";
+  let logoData = null;
+  try {
+    const resp = await fetch(LOGO_URL);
+    const blob = await resp.blob();
+    logoData = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload  = () => res(fr.result);
+      fr.onerror = rej;
+      fr.readAsDataURL(blob);
+    });
+  } catch(_) {}
+
+  // ── CABECERA: fondo gris claro, borde negro redondeado ──
+  const HDR_X = ML, HDR_Y = 8;
+  const HDR_W = PW - ML - MR;
+  const HDR_H = 30;
+  const RADIUS = 3;
+
+  doc.setFillColor(...HDR_BG);
+  doc.setDrawColor(...BLACK);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(HDR_X, HDR_Y, HDR_W, HDR_H, RADIUS, RADIUS, "FD");
+
+  // Logo (esquina superior izquierda dentro del recuadro)
+  if (logoData) {
+    doc.addImage(logoData, "PNG", HDR_X + 4, HDR_Y + 4, 22, 22);
+  }
+
+  // Fecha y hora (esquina superior derecha)
+  const ahora = new Date();
+  const fechaStr = ahora.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+  const horaStr  = ahora.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text(`${fechaStr}   ${horaStr}`, HDR_X + HDR_W - 4, HDR_Y + 8, { align: "right" });
+
+  // Título principal centrado
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(...BLACK);
+  doc.text("EVALUACIÓN SENSHI-KAN", PW / 2, HDR_Y + 13, { align: "center" });
+
+  // Subtítulo: Grupo
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  doc.text(`Concentrador · Grupo ${grupo}`, PW / 2, HDR_Y + 20, { align: "center" });
+
+  // Sinodales
+  const nombresSinodales = sinodales
+    .slice()
+    .sort((a, b) => Number(a.numero) - Number(b.numero))
+    .map(s => `${Number(s.numero) === 0 ? "★ " : ""}${s.nombre}`)
+    .join("  |  ");
+  doc.setFontSize(6.5);
+  doc.setTextColor(80, 80, 80);
+  doc.text("Sinodales: " + nombresSinodales, PW / 2, HDR_Y + 27, { align: "center", maxWidth: HDR_W - 30 });
+
+  // ── TOP 3 DESTACADOS ──
+  const top3 = rows
+    .filter(r => r["Promedio Final"] !== "" && r["Promedio Final"] !== undefined)
+    .map(r => ({ ...r, _prom: parseFloat(r["Promedio Final"]) }))
+    .sort((a, b) => b._prom - a._prom)
+    .slice(0, 3);
+
+  let curY = HDR_Y + HDR_H + 5;
+
+  if (top3.length) {
+    // Etiqueta sección
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...BLACK);
+    doc.text("🏅  EXÁMENES DESTACADOS", ML, curY + 4);
+    curY += 7;
+
+    const MEDALLAS_PDF = ["1°", "2°", "3°"];
+    const cardW = (HDR_W - 6) / 3;   // 3 tarjetas con gap de 3 mm
+    const cardH = 16;
+
+    top3.forEach((r, i) => {
+      const cx = ML + i * (cardW + 3);
+      const promCls = r._prom >= 9 ? GREEN : r._prom >= 7 ? GOLD : RED;
+
+      // Fondo tarjeta
+      doc.setFillColor(250, 250, 250);
+      doc.setDrawColor(...BORDER);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(cx, curY, cardW, cardH, 2, 2, "FD");
+
+      // Medalla
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(...GOLD);
+      doc.text(MEDALLAS_PDF[i], cx + 5, curY + 10);
+
+      // Nombre y grado
+      const maxNomW = cardW - 24;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(...BLACK);
+      const nombreTrunc = doc.splitTextToSize(r.Nombre || "—", maxNomW)[0];
+      doc.text(nombreTrunc, cx + 14, curY + 8);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 100, 100);
+      doc.text(r.Grado || "", cx + 14, curY + 13);
+
+      // Promedio
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...promCls);
+      doc.text(r._prom.toFixed(2), cx + cardW - 4, curY + 10, { align: "right" });
+    });
+
+    curY += cardH + 5;
+  }
+
+  // ── TABLA CONCENTRADOR ──
+  const head = [["#", "Nombre", "Grado", ...ASPECTOS.map(a => a.replace(" Basica", "\nBasica")), "Prom.", "Resultado"]];
+  const body = rows.map(r => {
+    const res    = r["Resultado"];
+    const resTxt = !res ? "Pendiente" : res;
+    return [
+      r.Numero || "",
+      r.Nombre || "",
+      r.Grado  || "",
+      ...ASPECTOS.map(a => r[a] || "—"),
+      r["Promedio Final"] || "—",
+      resTxt
+    ];
+  });
+
+  let apr=0, no=0, pend=0;
+  rows.forEach(r => {
+    if (r.Resultado === "APROBADO") apr++;
+    else if (r.Resultado === "NO APROBADO") no++;
+    else pend++;
+  });
+
+  doc.autoTable({
+    head,
+    body,
+    startY: curY,
+    theme: "grid",
+    styles: {
+      font: "helvetica",
+      fontSize: 7,
+      cellPadding: { top: 2.2, bottom: 2.2, left: 2.5, right: 2.5 },
+      overflow: "linebreak",
+      valign: "middle",
+      lineColor: BORDER,
+      lineWidth: 0.2,
+    },
+    headStyles: {
+      fillColor: INK,
+      textColor: WHITE,
+      fontStyle: "bold",
+      fontSize: 6.5,
+      halign: "center",
+    },
+    columnStyles: {
+      0: { halign: "center", cellWidth: 8  },
+      1: { cellWidth: "auto" },
+      2: { cellWidth: 18, halign: "center" },
+      3: { halign: "center", cellWidth: 13 },
+      4: { halign: "center", cellWidth: 13 },
+      5: { halign: "center", cellWidth: 15 },
+      6: { halign: "center", cellWidth: 13 },
+      7: { halign: "center", cellWidth: 11 },
+      8: { halign: "center", cellWidth: 14 },
+      9: { halign: "center", cellWidth: 20 },
+    },
+    alternateRowStyles: { fillColor: [250, 250, 248] },
+    didParseCell(data) {
+      if (data.section !== "body") return;
+      const col = data.column.index;
+      if (col === 9) {
+        const v = data.cell.raw;
+        if (v === "APROBADO")         { data.cell.styles.textColor = GREEN; data.cell.styles.fontStyle = "bold"; }
+        else if (v === "NO APROBADO") { data.cell.styles.textColor = RED;   data.cell.styles.fontStyle = "bold"; }
+        else                          { data.cell.styles.textColor = GOLD; }
+      }
+      if (col === 8) {
+        const v = parseFloat(data.cell.raw);
+        if (!isNaN(v)) { data.cell.styles.textColor = v >= 7 ? GREEN : RED; data.cell.styles.fontStyle = "bold"; }
+      }
+      if (col >= 3 && col <= 7) {
+        const v = data.cell.raw;
+        if (v === "E" || v === "MB")  data.cell.styles.textColor = GREEN;
+        else if (v === "M")           data.cell.styles.textColor = RED;
+      }
+    },
+    margin: { left: ML, right: MR },
+  });
+
+  // ── RESUMEN ESTADÍSTICO ──
+  const finalY = doc.lastAutoTable.finalY + 5;
+  const stats  = [
+    { label: "Total",        val: rows.length, color: INK   },
+    { label: "Aprobados",    val: apr,         color: GREEN },
+    { label: "No aprobados", val: no,          color: RED   },
+    { label: "Pendientes",   val: pend,        color: GOLD  },
+  ];
+  const boxW = (HDR_W - 9) / 4;
+  stats.forEach((s, i) => {
+    const bx = ML + i * (boxW + 3);
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(...BORDER);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(bx, finalY, boxW, 12, 2, 2, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(...s.color);
+    doc.text(String(s.val), bx + boxW / 2, finalY + 7.5, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    doc.setTextColor(100, 100, 100);
+    doc.text(s.label, bx + boxW / 2, finalY + 11, { align: "center" });
+  });
+
+  // ── PIE DE PÁGINA ──
+  doc.setFontSize(6.5);
+  doc.setTextColor(170, 170, 170);
+  doc.text("Sistema de Evaluaciones Senshi-Kan", ML, PH - 6);
+  doc.text(`Generado: ${fechaStr}  ${horaStr}`, PW - MR, PH - 6, { align: "right" });
+
+  // ── GUARDAR ──
+  const fn = `concentrador_grupo${grupo}_${ahora.getFullYear()}${String(ahora.getMonth()+1).padStart(2,"0")}${String(ahora.getDate()).padStart(2,"0")}.pdf`;
+  doc.save(fn);
+  toast("PDF generado ✓");
+}
+
 // ══════════════════════════════════════════
 //  RESET EXAMEN
 // ══════════════════════════════════════════
