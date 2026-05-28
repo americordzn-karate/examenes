@@ -236,6 +236,13 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 <body>
   <div id="login-screen" class="login-screen">
 
+  <div style="display:flex;flex-direction:column;align-items:center;gap:20px;width:320px">
+
+    <div style="text-align:center">
+      <div style="font-family:var(--font-h);font-size:1.1rem;color:rgba(255,255,255,.75);letter-spacing:.05em;margin-bottom:12px">Sistema de Evaluaciones</div>
+      <img src="https://raw.githubusercontent.com/americordzn-karate/retos/17eba3e9c50358ded081c3fe44bf64e6db2745ee/Escudo%20Circulo%20PNG.png" alt="Escudo Senshi-Kan" style="width:90px;height:90px;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))"/>
+    </div>
+
   <div class="login-box">
 
     <h2>
@@ -252,7 +259,14 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
       Entrar
     </button>
 
+    <!-- Barra de progreso -->
+    <div id="login-progress-wrap" style="display:none;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden">
+      <div id="login-progress-bar" style="height:100%;width:0%;background:#b8860b;border-radius:3px;transition:width .3s ease"></div>
+    </div>
+
     <div id="login-msg"></div>
+
+  </div>
 
   </div>
 
@@ -1256,111 +1270,83 @@ async function toggleAsistencia(grupo, numero, presente){
 }
   async function loginToken(){
 
-  const token =
-    document.getElementById("token-input")
-      .value
-      .trim();
+  const token = document.getElementById("token-input").value.trim();
 
   if(!token){
-
-    document.getElementById("login-msg")
-      .textContent =
-      "Ingrese un token";
-
+    document.getElementById("login-msg").textContent = "Ingrese un token";
     return;
+  }
 
+  const wrap = document.getElementById("login-progress-wrap");
+  const bar  = document.getElementById("login-progress-bar");
+  const msg  = document.getElementById("login-msg");
+  msg.textContent = "";
+  wrap.style.display = "block";
+  bar.style.background = "#b8860b";
+
+  let pct = 0;
+  function avanzar(target, delay){
+    return new Promise(res => setTimeout(() => { pct = target; bar.style.width = pct + "%"; res(); }, delay));
   }
 
   try{
 
-    // Verificar conexión
+    await avanzar(15, 80);
+
     const api = API_URL.trim();
-
     const test = await fetch(`${api}?action=getSinodales`);
-const testJson = await test.json();
+    const testJson = await test.json();
+    if(!testJson || !testJson.sinodales) throw new Error("Sin conexión");
 
-if(!testJson || !testJson.sinodales){
-  throw new Error("Sin conexión");
-}
+    await avanzar(40, 100);
 
-    // Guardar API
     API_URL = api;
+    localStorage.setItem("k_api", API_URL);
 
-    localStorage.setItem(
-      "k_api",
-      API_URL
-    );
-
-    // Obtener configuración
-    const cfg =
-      await get("getConfig");
-
+    const cfg = await get("getConfig");
     config = cfg;
 
-    // Obtener sinodales
-    const sr =
-      await get("getSinodales");
+    await avanzar(65, 100);
 
-    sinodales =
-      sr.sinodales || [];
+    const sr = await get("getSinodales");
+    sinodales = sr.sinodales || [];
 
-    // Buscar token
-    const sinodal =
-      sinodales.find(
-        s =>
-          (s.url || "")
-            .toString()
-            .trim()
-            .toUpperCase()
-          ===
-          token.toUpperCase()
-      );
+    await avanzar(85, 100);
 
-    if(!sinodal){
+    const sinodal = sinodales.find(
+      s => (s.url || "").toString().trim().toUpperCase() === token.toUpperCase()
+    );
 
-      document.getElementById("login-msg")
-        .textContent =
-        "Token inválido";
-
+    if(sinodal === undefined || sinodal === null){
+      bar.style.background = "#c0392b";
+      await avanzar(100, 100);
+      setTimeout(() => { wrap.style.display = "none"; bar.style.width = "0%"; }, 600);
+      msg.textContent = "Token inválido";
       return;
-
     }
 
     usuarioActual = sinodal;
-
-    rolNum = parseInt(
-      sinodal.numero,
-      10
-    );
-
+    rolNum = Number(sinodal.numero);
     tokenActual = token;
 
-    console.log(
-      "ROL:",
-      rolNum
-    );
+    await avanzar(100, 150);
+    await new Promise(res => setTimeout(res, 300));
 
-    // Ocultar login
+    console.log("ROL asignado:", rolNum, "| Es admin:", rolNum === 0);
+
     document.getElementById("login-screen").style.display = "none";
-
-    // Mostrar banner con nombre
     document.getElementById("banner-nombre").textContent = sinodal.nombre;
     document.getElementById("banner-usuario").style.display = "block";
 
-    // Aplicar permisos
     aplicarPermisos();
-
-    // Iniciar sistema
     await iniciarSistema();
 
   }catch(e){
-
     console.error(e);
-
-    document.getElementById("login-msg")
-      .textContent =
-      "Error de conexión";
-
+    bar.style.background = "#c0392b";
+    bar.style.width = "100%";
+    setTimeout(() => { wrap.style.display = "none"; bar.style.width = "0%"; }, 600);
+    msg.textContent = "Error de conexión";
   }
 
 }
