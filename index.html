@@ -378,8 +378,6 @@ const gActivo = { eval:"A", prin:"A", conc:"A", alum:"A" };
 
 async function iniciarSistema(){
 
-  await cargarConfig();
-
   aplicarRol();
 
 }
@@ -1016,7 +1014,8 @@ async function guardarSinodales() {
     await post("saveSinodales", {}, lista);
     sinodales = lista;
     toast("Sinodales guardados ✓");
-    mostrarSelectorRol();
+    // Selector manual deshabilitado.
+// El acceso ahora funciona por token.
 
     
 
@@ -1136,41 +1135,78 @@ function toast(msg, isErr=false) {
 
   try{
 
-    // Conectar primero
-await conectar(false);
+    // Verificar conexión
+    const api = API_URL.trim();
 
-// Buscar token en tabla de sinodales
-const sinodal =
-  sinodales.find(
-    s =>
-      (s.url || "")
-        .toString()
-        .trim()
-        .toUpperCase()
-      ===
-      token.toUpperCase()
-  );
+    const ping = await fetch(
+      `${api}?action=ping`
+    );
 
-if(!sinodal){
+    const pingJson = await ping.json();
 
-  document.getElementById("login-msg")
-    .textContent =
-    "Token inválido";
+    if(!pingJson.ok){
 
-  return;
+      throw new Error("Sin conexión");
 
-}
+    }
 
-usuarioActual = sinodal;
+    // Guardar API
+    API_URL = api;
 
-rolNum = parseInt(sinodal.numero,10);
-    console.log(
-  "ROL FINAL:",
-  rolNum,
-  typeof rolNum
-);
+    localStorage.setItem(
+      "k_api",
+      API_URL
+    );
+
+    // Obtener configuración
+    const cfg =
+      await get("getConfig");
+
+    config = cfg;
+
+    // Obtener sinodales
+    const sr =
+      await get("getSinodales");
+
+    sinodales =
+      sr.sinodales || [];
+
+    // Buscar token
+    const sinodal =
+      sinodales.find(
+        s =>
+          (s.url || "")
+            .toString()
+            .trim()
+            .toUpperCase()
+          ===
+          token.toUpperCase()
+      );
+
+    if(!sinodal){
+
+      document.getElementById("login-msg")
+        .textContent =
+        "Token inválido";
+
+      return;
+
+    }
+
+    // Guardar usuario
+    usuarioActual = sinodal;
+
+    rolNum = parseInt(
+      sinodal.numero,
+      10
+    );
 
     tokenActual = token;
+
+    console.log(
+      "ROL:",
+      rolNum
+    );
 
     // Ocultar login
     document.getElementById(
@@ -1181,19 +1217,16 @@ rolNum = parseInt(sinodal.numero,10);
     aplicarPermisos();
 
     // Cargar sistema
-    iniciarSistema();
+    await iniciarSistema();
 
   }catch(e){
+
+    console.error(e);
 
     document.getElementById("login-msg")
       .textContent =
       "Error de conexión";
 
-    console.error(e);
-
   }
 
 }
-</script>
-</body>
-</html>
