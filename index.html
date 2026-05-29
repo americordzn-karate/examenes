@@ -287,8 +287,11 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
       autocorrect="off"
       autocapitalize="off"
       spellcheck="false"
+      inputmode="text"
       style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;"
       oninput="actualizarTokenDisplay()"
+      onkeyup="actualizarTokenDisplay()"
+      onchange="actualizarTokenDisplay()"
       onkeydown="if(event.key==='Enter') loginToken()"
     />
 
@@ -1335,18 +1338,27 @@ async function toggleAsistencia(grupo, numero, presente){
 function actualizarTokenDisplay() {
   const real = document.getElementById("token-real");
   const display = document.getElementById("token-display");
-  const placeholder = document.getElementById("token-placeholder");
   const hidden = document.getElementById("token-input");
 
-  const val = real.value;
-  hidden.value = val; // sincronizar con el input oculto que usa loginToken()
+  // Eliminar caracteres no deseados que el móvil puede inyectar
+  const sanitized = real.value
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "")
+    .replace(/\s+/g, "");
 
-  if (val.length === 0) {
+  // Si el móvil insertó espacios/invisibles, corregir el campo real también
+  if (real.value !== sanitized) {
+    const pos = real.selectionStart;
+    real.value = sanitized;
+    try { real.setSelectionRange(pos, pos); } catch(_) {}
+  }
+
+  hidden.value = sanitized;
+
+  if (sanitized.length === 0) {
     display.innerHTML = '<span id="token-placeholder" style="color:#aaa;font-size:.95rem;letter-spacing:0">Ingrese su token Senshi-Kan</span>';
   } else {
-    // Cada carácter → emoji 🥷🏼 (el tono de piel usa dos code points, los contamos como uno)
     const NINJA = "🥷🏼";
-    display.textContent = NINJA.repeat(val.length);
+    display.textContent = NINJA.repeat(sanitized.length);
   }
 }
 
@@ -1363,7 +1375,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function loginToken(){
 
-  const token = document.getElementById("token-input").value.trim();
+  // Leer desde token-real (fuente de verdad) con fallback a token-input
+  const realInput   = document.getElementById("token-real");
+  const hiddenInput = document.getElementById("token-input");
+
+  // Normalizar: quitar espacios, saltos, caracteres invisibles y pasar a mayúsculas
+  const rawToken = (realInput ? realInput.value : hiddenInput.value) || "";
+  const token = rawToken
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "") // caracteres invisibles
+    .replace(/\s+/g, "")                           // cualquier espacio/salto
+    .toUpperCase();
 
   if(!token){
     document.getElementById("login-msg").textContent = "Ingrese un token";
