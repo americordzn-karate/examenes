@@ -87,13 +87,6 @@
   text-align:center;
 
 }
-
-#token-display:focus-within,
-#token-display.focused {
-  border-color: #111827;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(17,24,39,0.12);
-}
 :root{
   --red:#c0392b;--red-d:#922b21;--red-l:#fdf0ef;
   --gold:#b8860b;--gold-l:#fef9e7;
@@ -259,43 +252,21 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
       Acceso de Sinodales
     </h2>
 
-    <!-- Campo visual con máscara de emojis -->
-    <div id="token-display"
-      onclick="document.getElementById('token-real').focus()"
-      style="
-        padding:14px;
-        border-radius:10px;
-        border:1px solid #ccc;
-        font-size:1.2rem;
-        min-height:50px;
-        cursor:text;
-        background:#fff;
-        letter-spacing:2px;
-        color:#333;
-        transition:border-color .2s;
-        position:relative;
-        line-height:1.4;
-        word-break:break-all;
-      "
-    ><span id="token-placeholder" style="color:#aaa;font-size:.95rem;letter-spacing:0">Ingrese su token Senshi-Kan</span></div>
-
-    <!-- Input real oculto que captura las teclas -->
+    <!-- Campo token: input único real, enmascarado con 🥷🏼 vía JS -->
     <input
       id="token-real"
       type="text"
+      placeholder="Ingrese su token Senshi-Kan"
       autocomplete="off"
       autocorrect="off"
-      autocapitalize="off"
+      autocapitalize="none"
       spellcheck="false"
       inputmode="text"
-      style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;"
-      oninput="actualizarTokenDisplay()"
-      onkeyup="actualizarTokenDisplay()"
-      onchange="actualizarTokenDisplay()"
+      style="padding:14px;border-radius:10px;border:1px solid #ccc;font-size:1.4rem;width:100%;box-sizing:border-box;letter-spacing:4px;outline:none;transition:border-color .2s,box-shadow .2s;font-family:monospace;"
+      onfocus="this.style.borderColor='#111827';this.style.boxShadow='0 0 0 3px rgba(17,24,39,0.12)'"
+      onblur="this.style.borderColor='#ccc';this.style.boxShadow='none'"
       onkeydown="if(event.key==='Enter') loginToken()"
     />
-
-    <!-- Input de compatibilidad para loginToken() -->
     <input id="token-input" type="hidden" />
 
     <button onclick="loginToken()">
@@ -1335,55 +1306,97 @@ async function toggleAsistencia(grupo, numero, presente){
 // ══════════════════════════════════════════
 //  CAMPO TOKEN CON MÁSCARA DE EMOJIS 🥷🏼
 // ══════════════════════════════════════════
-function actualizarTokenDisplay() {
-  const real = document.getElementById("token-real");
-  const display = document.getElementById("token-display");
-  const hidden = document.getElementById("token-input");
+(function() {
+  const NINJA = "🥷🏼";
+  // Valor real del token (lo que el usuario escribe)
+  let tokenReal = "";
 
-  // Eliminar caracteres no deseados que el móvil puede inyectar
-  const sanitized = real.value
-    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "")
-    .replace(/\s+/g, "");
+  document.addEventListener("DOMContentLoaded", () => {
+    const input  = document.getElementById("token-real");
+    const hidden = document.getElementById("token-input");
+    if (!input) return;
 
-  // Si el móvil insertó espacios/invisibles, corregir el campo real también
-  if (real.value !== sanitized) {
-    const pos = real.selectionStart;
-    real.value = sanitized;
-    try { real.setSelectionRange(pos, pos); } catch(_) {}
-  }
+    // Sincroniza el display con emojis y el hidden con el valor real
+    function sync() {
+      hidden.value = tokenReal;
+      // Mostrar N ninjas; cursor queda al final automáticamente
+      input.value = NINJA.repeat(tokenReal.length);
+    }
 
-  hidden.value = sanitized;
+    // beforeinput: interceptar ANTES de que el navegador modifique el campo
+    input.addEventListener("beforeinput", (e) => {
+      e.preventDefault(); // siempre prevenimos; nosotros lo manejamos
 
-  if (sanitized.length === 0) {
-    display.innerHTML = '<span id="token-placeholder" style="color:#aaa;font-size:.95rem;letter-spacing:0">Ingrese su token Senshi-Kan</span>';
-  } else {
-    const NINJA = "🥷🏼";
-    display.textContent = NINJA.repeat(sanitized.length);
-  }
-}
+      const type = e.inputType;
 
-// Hacer clic en el div visual → enfocar el input oculto
-document.addEventListener("DOMContentLoaded", () => {
-  const display = document.getElementById("token-display");
-  const real = document.getElementById("token-real");
-  if (!display || !real) return;
+      if (type === "insertText" || type === "insertCompositionText") {
+        // Agregar los caracteres reales (sin espacios ni invisibles)
+        const chars = (e.data || "")
+          .replace(/[\u200B-\u200D\uFEFF\u00A0\s]/g, "");
+        tokenReal += chars;
+        sync();
+      }
+      else if (
+        type === "deleteContentBackward" ||
+        type === "deleteWordBackward"     ||
+        type === "deleteSoftLineBackward" ||
+        type === "deleteHardLineBackward"
+      ) {
+        // Borrar hacia atrás
+        if (type === "deleteContentBackward") {
+          tokenReal = tokenReal.slice(0, -1);
+        } else {
+          tokenReal = ""; // word/line delete → borrar todo
+        }
+        sync();
+      }
+      else if (
+        type === "deleteContentForward" ||
+        type === "deleteWordForward"
+      ) {
+        // Borrar hacia adelante (tecla Supr)
+        tokenReal = tokenReal.slice(1);
+        sync();
+      }
+      else if (type === "insertFromPaste" || type === "insertFromDrop") {
+        // Pegar: limpiar y agregar
+        const pasted = (e.data || "")
+          .replace(/[\u200B-\u200D\uFEFF\u00A0\s]/g, "");
+        tokenReal += pasted;
+        sync();
+      }
+      // Ignorar cualquier otro inputType (selección, historial, etc.)
+    });
 
-  display.addEventListener("click", () => real.focus());
-  real.addEventListener("focus",  () => display.classList.add("focused"));
-  real.addEventListener("blur",   () => display.classList.remove("focused"));
-});
+    // Fallback para navegadores que no soporten beforeinput (raro, pero por si acaso)
+    input.addEventListener("input", () => {
+      // Si beforeinput funcionó, input.value ya son emojis y tokenReal está correcto.
+      // Si no (fallback), tomamos lo que haya y limpiamos emojis del value.
+      const raw = input.value.replace(new RegExp(NINJA, "g"), "")
+        .replace(/[\u200B-\u200D\uFEFF\u00A0\s]/g, "");
+      if (raw.length > 0) {
+        tokenReal += raw;
+        sync();
+      }
+    });
+
+    // Exponer tokenReal para loginToken()
+    input._getTokenReal = () => tokenReal;
+    input._resetToken   = () => { tokenReal = ""; sync(); };
+  });
+})();
 
   async function loginToken(){
 
-  // Leer desde token-real (fuente de verdad) con fallback a token-input
-  const realInput   = document.getElementById("token-real");
-  const hiddenInput = document.getElementById("token-input");
+  const inputEl = document.getElementById("token-real");
+  // Usar el valor real interceptado; fallback al hidden por compatibilidad
+  const rawToken = (inputEl && inputEl._getTokenReal)
+    ? inputEl._getTokenReal()
+    : (document.getElementById("token-input").value || "");
 
-  // Normalizar: quitar espacios, saltos, caracteres invisibles y pasar a mayúsculas
-  const rawToken = (realInput ? realInput.value : hiddenInput.value) || "";
   const token = rawToken
-    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "") // caracteres invisibles
-    .replace(/\s+/g, "")                           // cualquier espacio/salto
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "")
+    .replace(/\s+/g, "")
     .toUpperCase();
 
   if(!token){
@@ -1436,6 +1449,9 @@ document.addEventListener("DOMContentLoaded", () => {
       await avanzar(100, 100);
       setTimeout(() => { wrap.style.display = "none"; bar.style.width = "0%"; }, 600);
       msg.textContent = "Token inválido";
+      // Limpiar campo para que el usuario pueda reintentar
+      const inp = document.getElementById("token-real");
+      if (inp && inp._resetToken) inp._resetToken();
       return;
     }
 
