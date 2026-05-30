@@ -1770,6 +1770,11 @@ async function generarPDFConcentrador() {
     didParseCell(data) {
       if (data.section !== "body") return;
       const col = data.column.index;
+      // Suprimir renderizado automático de Observaciones (lo hace didDrawCell)
+      if (col === 10) {
+        data.cell.text = [];
+        return;
+      }
       if (col === 9) {
         const v = data.cell.raw;
         if (v === "APROBADO")         { data.cell.styles.textColor = GREEN; data.cell.styles.fontStyle = "bold"; }
