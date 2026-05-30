@@ -427,7 +427,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 <section class="view" id="v-config">
   <h2 class="stitle">Sinodales</h2>
   <div class="card">
-    <p style="font-size:.84rem;color:var(--ink3);margin-bottom:.75rem">Defina los sinodales. El Sinodal Principal tiene número 0 y acceso a todo. Los demás solo ven su propia hoja a través de su URL.</p>
+    <p style="font-size:.84rem;color:var(--ink3);margin-bottom:.75rem">Defina los sinodales. El Sinodal Principal tiene número 0 y acceso a todo. Los demás solo ven su propia hoja.</p>
     <table class="sin-table" id="sin-tbl">
       <thead><tr><th style="width:70px">#</th><th>Nombre</th><th>Token</th><th style="width:50px"></th></tr></thead>
       <tbody id="sin-tbody"></tbody>
@@ -1750,7 +1750,7 @@ async function generarPDFConcentrador() {
       fillColor: INK,
       textColor: WHITE,
       fontStyle: "bold",
-      fontSize: 6.5,
+      fontSize: 5.5,
       halign: "center",
     },
     columnStyles: {
@@ -1777,6 +1777,7 @@ async function generarPDFConcentrador() {
       }
       if (col === 9) {
         const v = data.cell.raw;
+        data.cell.styles.fontSize = 5.5;
         if (v === "APROBADO")         { data.cell.styles.textColor = GREEN; data.cell.styles.fontStyle = "bold"; }
         else if (v === "NO APROBADO") { data.cell.styles.textColor = RED;   data.cell.styles.fontStyle = "bold"; }
         else                          { data.cell.styles.textColor = GOLD; }
