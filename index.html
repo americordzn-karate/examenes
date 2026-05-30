@@ -976,16 +976,17 @@ function buildConcentrador(rows) {
   </div>
   <table><thead><tr><th>#</th><th>Nombre</th><th>Grado</th>`;
   ASPECTOS.forEach(a => { h += `<th>${a}</th>`; });
-  h += `<th>Promedio</th><th>Resultado</th></tr></thead><tbody>`;
+  h += `<th>Promedio</th><th>Resultado</th><th>Observaciones</th></tr></thead><tbody>`;
   rows.forEach(r => {
     const pf  = r["Promedio Final"];
     const res = r["Resultado"];
     const rb  = !res ? `<span class="badge b-pend">Pendiente</span>`
               : res==="APROBADO" ? `<span class="badge b-apr">APROBADO</span>`
               : `<span class="badge b-no">NO APROBADO</span>`;
+    const obs = (r["Observaciones"] || "").replace(/\n/g, "<br>");
     h += `<tr><td>${r.Numero||""}</td><td>${r.Nombre||""}</td><td>${r.Grado||""}</td>`;
     ASPECTOS.forEach(a => { h += `<td>${r[a]||"—"}</td>`; });
-    h += `<td><span class="badge b-prom">${pf||"—"}</span></td><td>${rb}</td></tr>`;
+    h += `<td><span class="badge b-prom">${pf||"—"}</span></td><td>${rb}</td><td style="font-size:.78rem;color:var(--ink2);white-space:pre-wrap;max-width:200px">${obs}</td></tr>`;
   });
   h += `</tbody></table>`;
   return h;
@@ -1571,10 +1572,10 @@ async function generarPDFConcentrador() {
   }
   if (!rows.length) { toast("No hay datos en el concentrador.", true); return; }
 
-  // 2. Crear documento VERTICAL (portrait) carta
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
-  const PW = doc.internal.pageSize.getWidth();   // 215.9 mm
-  const PH = doc.internal.pageSize.getHeight();  // 279.4 mm
+  // 2. Crear documento HORIZONTAL (landscape) carta
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "letter" });
+  const PW = doc.internal.pageSize.getWidth();   // 279.4 mm
+  const PH = doc.internal.pageSize.getHeight();  // 215.9 mm
   const ML = 10, MR = 10; // márgenes laterales
 
   // ── COLORES ──
@@ -1709,7 +1710,7 @@ async function generarPDFConcentrador() {
   }
 
   // ── TABLA CONCENTRADOR ──
-  const head = [["#", "Nombre", "Grado", ...ASPECTOS.map(a => a.replace(" Basica", "\nBasica")), "Prom.", "Resultado"]];
+  const head = [["#", "Nombre", "Grado", ...ASPECTOS.map(a => a.replace(" Basica", "\nBasica")), "Prom.", "Resultado", "Observaciones"]];
   const body = rows.map(r => {
     const res    = r["Resultado"];
     const resTxt = !res ? "Pendiente" : res;
@@ -1719,7 +1720,8 @@ async function generarPDFConcentrador() {
       r.Grado  || "",
       ...ASPECTOS.map(a => r[a] || "—"),
       r["Promedio Final"] || "—",
-      resTxt
+      resTxt,
+      (r["Observaciones"] || "").toString()
     ];
   });
 
@@ -1752,16 +1754,17 @@ async function generarPDFConcentrador() {
       halign: "center",
     },
     columnStyles: {
-      0: { halign: "center", cellWidth: 8  },
-      1: { cellWidth: "auto" },
-      2: { cellWidth: 18, halign: "center" },
-      3: { halign: "center", cellWidth: 13 },
-      4: { halign: "center", cellWidth: 13 },
-      5: { halign: "center", cellWidth: 15 },
-      6: { halign: "center", cellWidth: 13 },
-      7: { halign: "center", cellWidth: 11 },
-      8: { halign: "center", cellWidth: 14 },
-      9: { halign: "center", cellWidth: 20 },
+      0:  { halign: "center", cellWidth: 8  },
+      1:  { cellWidth: 30 },
+      2:  { cellWidth: 16, halign: "center" },
+      3:  { halign: "center", cellWidth: 12 },
+      4:  { halign: "center", cellWidth: 12 },
+      5:  { halign: "center", cellWidth: 13 },
+      6:  { halign: "center", cellWidth: 12 },
+      7:  { halign: "center", cellWidth: 10 },
+      8:  { halign: "center", cellWidth: 13 },
+      9:  { halign: "center", cellWidth: 18 },
+      10: { cellWidth: "auto", fontSize: 6.5 },
     },
     alternateRowStyles: { fillColor: [250, 250, 248] },
     didParseCell(data) {
@@ -1782,6 +1785,37 @@ async function generarPDFConcentrador() {
         if (v === "E" || v === "MB")  data.cell.styles.textColor = GREEN;
         else if (v === "M")           data.cell.styles.textColor = RED;
       }
+    },
+    // Renderizado de observaciones con nombre de sinodal en negritas
+    didDrawCell(data) {
+      if (data.section !== "body" || data.column.index !== 10) return;
+      const raw = (data.cell.raw || "").toString();
+      if (!raw) return;
+      const lineas = raw.split("\n");
+      const x = data.cell.x + 2.5;
+      let y = data.cell.y + 4;
+      const lineH = 3.5;
+      lineas.forEach(linea => {
+        const colonPos = linea.indexOf(": ");
+        if (colonPos > 0) {
+          // Nombre sinodal en negritas
+          const nombre = linea.substring(0, colonPos + 1);
+          const resto  = linea.substring(colonPos + 1);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(6.5);
+          doc.setTextColor(...BLACK);
+          const anchoNombre = doc.getTextWidth(nombre);
+          doc.text(nombre, x, y);
+          doc.setFont("helvetica", "normal");
+          doc.text(resto, x + anchoNombre, y);
+        } else {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(6.5);
+          doc.setTextColor(...BLACK);
+          doc.text(linea, x, y);
+        }
+        y += lineH;
+      });
     },
     margin: { left: ML, right: MR },
   });
