@@ -334,6 +334,10 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 
   <hr class="div"/>
   <h2 class="stitle">🏅 EXÁMENES DESTACADOS</h2>
+  <div class="gtabs" id="dest-eval-tabs">
+    <button class="gtab on" onclick="switchDestacados('eval','A',this)">Grupo A</button>
+    <button class="gtab"    onclick="switchDestacados('eval','B',this)">Grupo B</button>
+  </div>
   <div id="destacados-eval-wrap"><div class="loader">Cargando…</div></div>
 </section>
 
@@ -354,6 +358,10 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 
   <hr class="div"/>
   <h2 class="stitle">🏅 EXÁMENES DESTACADOS</h2>
+  <div class="gtabs" id="dest-prin-tabs">
+    <button class="gtab on" onclick="switchDestacados('prin','A',this)">Grupo A</button>
+    <button class="gtab"    onclick="switchDestacados('prin','B',this)">Grupo B</button>
+  </div>
   <div id="destacados-prin-wrap"><div class="loader">Cargando…</div></div>
 
   <hr class="div"/>
@@ -508,7 +516,7 @@ const buf = { eval:{A:{},B:{}}, prin:{A:{},B:{}} };
 const alumnos = { A:[], B:[] };
 
 // grupos activos por contexto
-const gActivo = { eval:"A", prin:"A", conc:"A", alum:"A" };
+const gActivo = { eval:"A", prin:"A", conc:"A", alum:"A", destEval:"A", destPrin:"A" };
 
 // ══════════════════════════════════════════
 //  CÍRCULO DE CINTA POR GRADO
@@ -544,34 +552,24 @@ async function iniciarSistema(){
 
   function aplicarPermisos(){
 
-  const esAdmin =
-  parseInt(rolNum,10) === 0;
+  const esAdmin      = parseInt(rolNum,10) === 0;
+  const esEspectador = parseInt(rolNum,10) < 0;
 
-  // Selector de roles
-  const sel =
-    document.getElementById("rol-sel");
-
+  const sel = document.getElementById("rol-sel");
   if(sel){
-
-    sel.value = rolNum;
-
+    sel.value    = rolNum;
     sel.disabled = true;
-
   }
 
-  // Tabs admin
-  const adminTabs =
-    document.querySelectorAll(".admin-only");
-
+  const adminTabs = document.querySelectorAll(".admin-only");
   adminTabs.forEach(el=>{
-
-    el.style.display =
-      esAdmin
-        ? ""
-        : "none";
-
+    el.style.display = esAdmin ? "" : "none";
   });
 
+  // El espectador no ve la vista de eval ni sus botones
+  if (esEspectador) {
+    document.getElementById("eval-btns").style.display = "none";
+  }
 }
   
 // ══════════════════════════════════════════
@@ -593,56 +591,33 @@ async function conectar() {
 
 function aplicarRol() {
 
-  const esPrincipal =
-  parseInt(rolNum,10) === 0;
+  const esPrincipal  = parseInt(rolNum, 10) === 0;
+  const esEspectador = parseInt(rolNum, 10) < 0;
 
-  // Tabs admin
-  document.getElementById("nb-principal")
-    .style.display =
-    esPrincipal ? "" : "none";
+  document.getElementById("nb-principal").style.display = esPrincipal ? "" : "none";
+  document.getElementById("nb-alumnos").style.display   = (esPrincipal || esEspectador) ? "" : "none";
+  document.getElementById("nb-config").style.display    = esPrincipal ? "" : "none";
 
-  document.getElementById("nb-alumnos")
-    .style.display =
-    esPrincipal ? "" : "none";
-
-  document.getElementById("nb-config")
-    .style.display =
-    esPrincipal ? "" : "none";
-
-  // Principal
   if (esPrincipal) {
-
-    document.getElementById("eval-btns")
-      .style.display = "none";
-
+    document.getElementById("eval-btns").style.display = "none";
     showView("v-principal");
-
     cargarPrincipal();
-
     cargarConcentrador();
-
     cargarConfig();
-
     cargarAlumnos();
-
-    cargarDestacados("destacados-prin-wrap");
-
-  }
-
-  // Sinodales normales
-  else {
-
-    document.getElementById("eval-btns")
-      .style.display = "flex";
-
+    cargarDestacados("destacados-prin-wrap", gActivo.destPrin);
+  } else if (esEspectador) {
+    // Solo acceso al listado de alumnos, sin botones de eval
+    document.getElementById("eval-btns").style.display = "none";
+    showView("v-alumnos");
+    cargarAlumnos();
+  } else {
+    // Sinodal normal
+    document.getElementById("eval-btns").style.display = "flex";
     showView("v-eval");
-
     cargarEval();
-
-    cargarDestacados("destacados-eval-wrap");
-
+    cargarDestacados("destacados-eval-wrap", gActivo.destEval);
   }
-
 }
 // ══════════════════════════════════════════
 //  NAVEGACIÓN
@@ -703,6 +678,7 @@ async function post(action, params={}, payload=null) {
 // ══════════════════════════════════════════
 async function cargarEval() {
   if (rolNum === null) return;
+  if (parseInt(rolNum, 10) < 0) return; // espectador no tiene eval
   const grupo = gActivo.eval;
   const wrap  = document.getElementById("eval-wrap");
   wrap.innerHTML = '<div class="loader">Cargando alumnos…</div>';
@@ -904,9 +880,9 @@ async function selCal(btn) {
     // Actualizar concentrador y destacados automáticamente
     if (ctx === "eval") {
       await cargarConcentrador();
-      cargarDestacados("destacados-eval-wrap");
+      cargarDestacados("destacados-eval-wrap", gActivo.destEval);
     } else {
-      cargarDestacados("destacados-prin-wrap");
+      cargarDestacados("destacados-prin-wrap", gActivo.destPrin);
     }
 
   } catch(e) {
@@ -1278,25 +1254,34 @@ function autoGuardarObs(textarea) {
 // ══════════════════════════════════════════
 const MEDALLAS = ["🥇","🥈","🥉","4️⃣","5️⃣"];
 
-async function cargarDestacados(wrapId) {
+function switchDestacados(ctx, grupo, btn) {
+  const tabsId = ctx === "eval" ? "dest-eval-tabs" : "dest-prin-tabs";
+  document.getElementById(tabsId)
+    .querySelectorAll(".gtab")
+    .forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  if (ctx === "eval") gActivo.destEval = grupo;
+  else                gActivo.destPrin = grupo;
+  const wrapId = ctx === "eval" ? "destacados-eval-wrap" : "destacados-prin-wrap";
+  cargarDestacados(wrapId, grupo);
+}
+
+async function cargarDestacados(wrapId, grupo) {
   const wrap = document.getElementById(wrapId);
   if (!wrap) return;
+  // Si no se pasa grupo, usar el activo según contexto
+  if (!grupo) {
+    grupo = wrapId.includes("eval") ? gActivo.destEval : gActivo.destPrin;
+  }
   wrap.innerHTML = '<div class="loader">Cargando…</div>';
   try {
-    const [rA, rB] = await Promise.all([
-      get("getConcentrador", {grupo:"A"}),
-      get("getConcentrador", {grupo:"B"})
-    ]);
-    const todos = [
-      ...(rA.concentrador || []),
-      ...(rB.concentrador || [])
-    ];
-    const conProm = todos
+    const r = await get("getConcentrador", {grupo});
+    const rows = r.concentrador || [];
+    const conProm = rows
       .filter(r => r["Promedio Final"] !== "" && r["Promedio Final"] !== undefined)
       .map(r => ({...r, _prom: parseFloat(r["Promedio Final"])}))
       .sort((a, b) => b._prom - a._prom)
       .slice(0, 5);
-
     wrap.innerHTML = buildDestacados(conProm);
   } catch(e) {
     wrap.innerHTML = `<div class="loader err">Error: ${e.message}</div>`;
@@ -1641,6 +1626,7 @@ async function generarPDFConcentrador() {
 
   // Sinodales
   const nombresSinodales = sinodales
+    .filter(s => Number(s.numero) >= 0)
     .slice()
     .sort((a, b) => Number(a.numero) - Number(b.numero))
     .map(s => `${Number(s.numero) === 0 ? " " : ""}${s.nombre}`)
