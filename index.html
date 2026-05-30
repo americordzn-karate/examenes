@@ -1643,7 +1643,7 @@ async function generarPDFConcentrador() {
   const nombresSinodales = sinodales
     .slice()
     .sort((a, b) => Number(a.numero) - Number(b.numero))
-    .map(s => `${Number(s.numero) === 0 ? "🥋 " : ""}${s.nombre}`)
+    .map(s => `${Number(s.numero) === 0 ? " " : ""}${s.nombre}`)
     .join("  |  ");
   doc.setFontSize(6.5);
   doc.setTextColor(80, 80, 80);
@@ -1663,7 +1663,7 @@ async function generarPDFConcentrador() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(...BLACK);
-    doc.text("🏅  EXÁMENES DESTACADOS", ML, curY + 4);
+    doc.text("EXÁMENES DESTACADOS", ML, curY + 4);
     curY += 7;
 
     const MEDALLAS_PDF = ["1°", "2°", "3°"];
