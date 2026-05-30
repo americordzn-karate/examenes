@@ -199,7 +199,8 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 .stat-c .sl{font-size:.75rem;color:var(--ink3);margin-top:2px}
 
 /* CONFIG GRID */
-.cg{display:grid;grid-template-columns:130px repeat(5,1fr);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:.83rem}
+.cg-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.cg{display:grid;grid-template-columns:130px repeat(6,1fr);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:.83rem;min-width:560px}
 .cg-h{background:var(--ink);color:#fff;padding:7px 8px;text-align:center;font-weight:500;border-right:1px solid rgba(255,255,255,.1)}
 .cg-h:last-child{border-right:none}
 .cg-rl{background:#f8f6f1;padding:7px 10px;font-weight:500;border-top:1px solid var(--border);border-right:1px solid var(--border)}
@@ -214,6 +215,18 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 /* FICHA COLAPSABLE */
 .ficha-head{cursor:pointer;user-select:none}
 .ficha-head:hover{filter:brightness(1.15)}
+
+/* KATA BADGE */
+.kata-badge{font-size:.72rem;font-weight:600;color:#b8860b;letter-spacing:.02em;margin-top:3px}
+
+/* OBSERVACIONES */
+.obs-toggle{width:100%;background:none;border:none;border-top:1px solid #f0ede8;padding:8px 16px;text-align:left;font-family:var(--font);font-size:.76rem;font-weight:600;color:var(--ink3);cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s}
+.obs-toggle:hover{background:#f8f6f1}
+.obs-toggle-icon{font-size:.65rem;transition:transform .2s;margin-left:auto}
+.obs-body{overflow:hidden;max-height:0;transition:max-height .25s ease, padding .25s ease;padding:0 16px}
+.obs-body.open{max-height:300px;padding:10px 16px}
+.obs-textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-family:var(--font);font-size:.83rem;resize:vertical;min-height:72px;color:var(--ink);background:#fafaf8;outline:none;transition:border-color .15s}
+.obs-textarea:focus{border-color:var(--gold);background:#fff}
 .ficha-body{transition:max-height .25s ease, opacity .25s ease, padding .25s ease;overflow:hidden;max-height:600px;opacity:1}
 .ficha.collapsed .ficha-body{max-height:0;opacity:0;padding-top:0;padding-bottom:0}
 .ficha.collapsed .ficha-footer{border-top:none}
@@ -427,6 +440,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
 
   <h2 class="stitle">Aspectos por grado</h2>
   <div class="card">
+    <div class="cg-wrap">
     <div class="cg" id="cg">
       <div class="cg-h">Grado</div>
       <div class="cg-h">Kata</div>
@@ -434,6 +448,8 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
       <div class="cg-h">Téc. Básica</div>
       <div class="cg-h">Kumite</div>
       <div class="cg-h">Teoría</div>
+      <div class="cg-h">Kata a Realizar</div>
+    </div>
     </div>
     <div class="btn-row">
       <button class="btn btn-red" onclick="guardarConfig()">💾 Guardar configuración</button>
@@ -740,12 +756,15 @@ function buildFichas(lista, cals, cfg, ctx, grupo) {
 
 function fichaHTML(al, activos, calRow, ctx, grupo) {
   const num = al.numero.toString();
+  const kpg = (config && config.katasPorGrado) || {};
+  const kataTexto = kpg[al.grado] ? `Kata: ${kpg[al.grado]}` : "";
   let html = `
   <div class="ficha collapsed" id="ficha-${ctx}-${grupo}-${num}">
     <div class="ficha-head" onclick="toggleFicha(this)">
       <div>
         <div class="fn">${al.nombre}<span class="ficha-toggle-icon">▼</span></div>
         <div class="fg">${al.grado}</div>
+        ${kataTexto ? `<div class="kata-badge">${kataTexto}</div>` : ""}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         ${cintaHTML(al.grado)}
@@ -775,11 +794,21 @@ function fichaHTML(al, activos, calRow, ctx, grupo) {
 
   const prom = calcProm(al, activos, calRow);
   const cls  = prom==="—" ? "pend" : (parseFloat(prom)>=7 ? "good" : "bad");
+  const obsVal = (calRow["Observaciones"] || "").replace(/"/g, "&quot;");
 
   html += `</div>
     <div class="ficha-footer">
       <span class="prom-label">Promedio</span>
       <span class="prom-val ${cls}" id="prom-${ctx}-${grupo}-${num}">${prom}</span>
+    </div>
+    <button class="obs-toggle" onclick="toggleObs(this)" type="button">
+      📝 Observaciones <span class="obs-toggle-icon">▶</span>
+    </button>
+    <div class="obs-body">
+      <textarea class="obs-textarea"
+        data-ctx="${ctx}" data-grupo="${grupo}" data-num="${num}"
+        placeholder="Escriba sus observaciones aquí…"
+        oninput="autoGuardarObs(this)">${obsVal}</textarea>
     </div>
   </div>`;
   return html;
@@ -1001,6 +1030,7 @@ async function cargarAlumnos() {
           <div>
             <div class="fn">${a.nombre}</div>
             <div class="fg">${a.grado}</div>
+            ${(config && config.katasPorGrado && config.katasPorGrado[a.grado]) ? `<div class="kata-badge">Kata: ${config.katasPorGrado[a.grado]}</div>` : ""}
           </div>
 
           <div style="display:flex;align-items:center;gap:8px">
@@ -1139,8 +1169,9 @@ async function guardarSinodales() {
 function buildCG(cfg) {
   const cg  = document.getElementById("cg");
   const apg = (cfg && cfg.aspectosPorGrado) || {};
-  // limpiar filas previas (mantener 6 cabeceras)
-  while (cg.children.length > 6) cg.removeChild(cg.lastChild);
+  const kpg = (cfg && cfg.katasPorGrado)    || {};
+  // limpiar filas previas (mantener 7 cabeceras)
+  while (cg.children.length > 7) cg.removeChild(cg.lastChild);
   GRADOS.forEach(g => {
     const lbl = document.createElement("div");
     lbl.className = "cg-rl"; lbl.textContent = g;
@@ -1155,18 +1186,35 @@ function buildCG(cfg) {
       cell.appendChild(chk);
       cg.appendChild(cell);
     });
+    // Columna Kata_Realiza
+    const cellK = document.createElement("div");
+    cellK.className = "cg-cell";
+    cellK.style.padding = "4px 6px";
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.value = kpg[g] || "";
+    inp.dataset.g = g;
+    inp.dataset.field = "kata";
+    inp.placeholder = "Ej: Heian Shodan";
+    inp.style.cssText = "width:100%;border:1px solid var(--border);border-radius:5px;padding:4px 6px;font-family:var(--font);font-size:.78rem";
+    cellK.appendChild(inp);
+    cg.appendChild(cellK);
   });
 }
 
 async function guardarConfig() {
   const apg = {};
-  GRADOS.forEach(g => { apg[g] = {}; });
+  const kpg = {};
+  GRADOS.forEach(g => { apg[g] = {}; kpg[g] = ""; });
   document.querySelectorAll("#cg input[type=checkbox]").forEach(c => {
     apg[c.dataset.g][c.dataset.a] = c.checked;
   });
+  document.querySelectorAll("#cg input[data-field='kata']").forEach(c => {
+    kpg[c.dataset.g] = c.value.trim();
+  });
   try {
-    await post("saveConfig", {}, {aspectosPorGrado: apg});
-    config = {aspectosPorGrado: apg};
+    await post("saveConfig", {}, {aspectosPorGrado: apg, katasPorGrado: kpg});
+    config = {aspectosPorGrado: apg, katasPorGrado: kpg};
     toast("Configuración guardada ✓");
   } catch(e) {
     toast("Error: " + e.message, true);
@@ -1197,6 +1245,31 @@ function toast(msg, isErr=false) {
 
   function toggleFicha(head) {
   head.closest(".ficha").classList.toggle("collapsed");
+}
+
+function toggleObs(btn) {
+  const body = btn.nextElementSibling;
+  const icon = btn.querySelector(".obs-toggle-icon");
+  const open = body.classList.toggle("open");
+  icon.style.transform = open ? "rotate(90deg)" : "";
+}
+
+// Debounce para autoguardado de observaciones
+const _obsTimers = {};
+function autoGuardarObs(textarea) {
+  const {ctx, grupo, num} = textarea.dataset;
+  const key = `${ctx}_${grupo}_${num}`;
+  if (_obsTimers[key]) clearTimeout(_obsTimers[key]);
+  _obsTimers[key] = setTimeout(async () => {
+    if (!buf[ctx][grupo][num]) buf[ctx][grupo][num] = {};
+    buf[ctx][grupo][num]["Observaciones"] = textarea.value;
+    try {
+      const sinodal = ctx === "eval" ? rolNum : 0;
+      await post("saveCalificaciones", {sinodal, grupo}, buf[ctx][grupo]);
+    } catch(e) {
+      toast("Error guardando observación", true);
+    }
+  }, 900);
 }
 
 // ══════════════════════════════════════════
