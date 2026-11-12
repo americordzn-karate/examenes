@@ -381,6 +381,15 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
      VIEW: ALUMNOS
 ═══════════════════════════════════════════ -->
 <section class="view" id="v-alumnos">
+    <h2 class="stitle">Candidatos al examen</h2>
+  <div class="card" style="margin-bottom:1.25rem">
+    <p style="font-size:.84rem;color:var(--ink3);margin-bottom:.75rem">Cargue los candidatos desde la base de datos general, asigne el grupo de cada alumno y presione "Crear listado". Esto <strong>reemplaza</strong> el listado actual de Hoja 1 y Hoja 2.</p>
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn btn-dark" id="btn-cargar-cand" onclick="cargarCandidatos()">📋 Cargar listado</button>
+      <button class="btn btn-ghost" onclick="confirmarBorrarListado()">🗑️ Borrar listado de Hoja 1 y Hoja 2</button>
+    </div>
+    <div id="cand-wrap" style="margin-top:1rem"></div>
+  </div>
   <h2 class="stitle">Agregar Alumno</h2>
   <div class="card" style="margin-bottom:1.25rem">
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
@@ -486,7 +495,18 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
     </div>
   </div>
 </div>
-
+<!-- MODAL CONFIRMACIÓN BORRAR LISTADO -->
+<div id="modal-borrar-lista" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px 30px;width:340px;box-shadow:0 10px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:var(--font-h);font-size:1.1rem;color:var(--red);font-weight:700">¿Borrar listado?</div>
+    <p style="font-size:.86rem;color:var(--ink2);line-height:1.5">Se eliminarán los nombres y grados de <strong>Hoja 1 y Hoja 2</strong> (columnas B y C).</p>
+    <p style="font-size:.82rem;color:var(--ink3)">Esta acción <strong>no puede deshacerse</strong>.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="cerrarModalBorrarLista()">Cancelar</button>
+      <button class="btn btn-red" id="btn-borrar-lista-confirm" onclick="ejecutarBorrarListado()">🗑️ Sí, borrar listado</button>
+    </div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -1849,6 +1869,95 @@ async function generarPDFConcentrador() {
   toast("PDF generado ✓");
 }
 
+// ══════════════════════════════════════════
+//  CANDIDATOS AL EXAMEN
+// ══════════════════════════════════════════
+let candidatos = [];
+
+async function cargarCandidatos() {
+  const wrap = document.getElementById("cand-wrap");
+  wrap.innerHTML = '<div class="loader">Cargando candidatos…</div>';
+  try {
+    const r = await get("getCandidatos");
+    candidatos = r.candidatos || [];
+    wrap.innerHTML = buildCandidatos(candidatos);
+  } catch(e) {
+    wrap.innerHTML = `<div class="loader err">Error: ${e.message}</div>`;
+  }
+}
+
+function buildCandidatos(lista) {
+  if (!lista.length) return '<div class="loader">No hay candidatos registrados.</div>';
+  let h = `<div class="tbl-wrap"><table>
+    <thead><tr><th>#</th><th>Nombre</th><th>Grado</th>
+    <th style="text-align:center">Grupo A</th><th style="text-align:center">Grupo B</th></tr></thead><tbody>`;
+  lista.forEach((c, i) => {
+    const grado = (typeof c.grado === "number") ? c.grado + " Kyu" : c.grado;
+    h += `<tr>
+      <td>${i + 1}</td><td>${c.nombre}</td><td>${grado}</td>
+      <td style="text-align:center"><input type="radio" name="cand-g-${i}" value="A" style="width:17px;height:17px;accent-color:var(--red);cursor:pointer"/></td>
+      <td style="text-align:center"><input type="radio" name="cand-g-${i}" value="B" style="width:17px;height:17px;accent-color:var(--red);cursor:pointer"/></td>
+    </tr>`;
+  });
+  h += `</tbody></table></div>
+    <div class="btn-row">
+      <button class="btn btn-dark" id="btn-crear-lista" onclick="crearListado()">✅ Crear listado</button>
+    </div>`;
+  return h;
+}
+
+async function crearListado() {
+  const seleccion = [];
+  candidatos.forEach((c, i) => {
+    const sel = document.querySelector(`input[name="cand-g-${i}"]:checked`);
+    if (sel) seleccion.push({ id: c.id, grupo: sel.value });
+  });
+  if (!seleccion.length) { toast("Seleccione el grupo de al menos un alumno.", true); return; }
+
+  const sinGrupo = candidatos.length - seleccion.length;
+  const msg = `Se reemplazará el listado actual de Hoja 1 y Hoja 2 con ${seleccion.length} alumno(s).`
+    + (sinGrupo ? `\n${sinGrupo} candidato(s) sin grupo NO se incluirán.` : "")
+    + "\n\n¿Desea continuar?";
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById("btn-crear-lista");
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+  try {
+    const r = await post("crearListado", {}, seleccion);
+    toast(r.message || "Listado creado ✓");
+    await cargarAlumnos();
+  } catch(e) {
+    toast("Error: " + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "✅ Crear listado";
+  }
+}
+
+function confirmarBorrarListado() {
+  document.getElementById("modal-borrar-lista").style.display = "flex";
+}
+function cerrarModalBorrarLista() {
+  document.getElementById("modal-borrar-lista").style.display = "none";
+}
+async function ejecutarBorrarListado() {
+  const btn = document.getElementById("btn-borrar-lista-confirm");
+  btn.disabled = true;
+  btn.textContent = "Borrando…";
+  try {
+    const r = await get("borrarListado");
+    cerrarModalBorrarLista();
+    toast(r.message || "Listado borrado ✓");
+    await cargarAlumnos();
+  } catch(e) {
+    cerrarModalBorrarLista();
+    toast("Error: " + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🗑️ Sí, borrar listado";
+  }
+}  
 // ══════════════════════════════════════════
 //  RESET EXAMEN
 // ══════════════════════════════════════════
