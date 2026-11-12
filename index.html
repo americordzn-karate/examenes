@@ -332,6 +332,20 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
     <button class="btn btn-ghost" onclick="cargarEval()">🔄 Recargar</button>
   </div>
 
+    <hr class="div"/>
+  <div class="card" style="padding:0;overflow:hidden">
+    <button type="button" class="obs-toggle" style="border-top:none;padding:14px 18px;font-size:.92rem;color:var(--ink)" onclick="toggleAsistencias('eval')">
+      📊 ASISTENCIAS DE LOS CANDIDATOS <span class="obs-toggle-icon" id="asis-eval-icon">▶</span>
+    </button>
+    <div id="asis-eval-body" style="display:none;padding:6px 18px 18px">
+      <div class="gtabs" id="asis-eval-tabs">
+        <button class="gtab on" onclick="switchAsis('eval','A',this)">Grupo A</button>
+        <button class="gtab"    onclick="switchAsis('eval','B',this)">Grupo B</button>
+      </div>
+      <div id="asis-eval-wrap"></div>
+      <div class="btn-row"><button class="btn btn-ghost" onclick="cargarAsistenciasCand('eval')">🔄 Actualizar</button></div>
+    </div>
+  </div>
   <hr class="div"/>
   <h2 class="stitle">🏅 EXÁMENES DESTACADOS</h2>
   <div class="gtabs" id="dest-eval-tabs">
@@ -356,6 +370,20 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
     <button class="btn btn-ghost" onclick="cargarPrincipal()">🔄 Recargar</button>
   </div>
 
+    <hr class="div"/>
+  <div class="card" style="padding:0;overflow:hidden">
+    <button type="button" class="obs-toggle" style="border-top:none;padding:14px 18px;font-size:.92rem;color:var(--ink)" onclick="toggleAsistencias('prin')">
+      📊 ASISTENCIAS DE LOS CANDIDATOS <span class="obs-toggle-icon" id="asis-prin-icon">▶</span>
+    </button>
+    <div id="asis-prin-body" style="display:none;padding:6px 18px 18px">
+      <div class="gtabs" id="asis-prin-tabs">
+        <button class="gtab on" onclick="switchAsis('prin','A',this)">Grupo A</button>
+        <button class="gtab"    onclick="switchAsis('prin','B',this)">Grupo B</button>
+      </div>
+      <div id="asis-prin-wrap"></div>
+      <div class="btn-row"><button class="btn btn-ghost" onclick="cargarAsistenciasCand('prin')">🔄 Actualizar</button></div>
+    </div>
+  </div>
   <hr class="div"/>
   <h2 class="stitle">🏅 EXÁMENES DESTACADOS</h2>
   <div class="gtabs" id="dest-prin-tabs">
@@ -1895,15 +1923,30 @@ function buildCandidatos(lista) {
     const grado = (typeof c.grado === "number") ? c.grado + " Kyu" : c.grado;
     h += `<tr>
       <td>${i + 1}</td><td>${c.nombre}</td><td>${grado}</td>
-      <td style="text-align:center"><input type="radio" name="cand-g-${i}" value="A" style="width:17px;height:17px;accent-color:var(--red);cursor:pointer"/></td>
-      <td style="text-align:center"><input type="radio" name="cand-g-${i}" value="B" style="width:17px;height:17px;accent-color:var(--red);cursor:pointer"/></td>
+      <td style="text-align:center"><input type="radio" name="cand-g-${i}" value="A" onchange="actualizarContadoresCand()" style="width:17px;height:17px;accent-color:var(--red);cursor:pointer"/></td>
+      <td style="text-align:center"><input type="radio" name="cand-g-${i}" value="B" onchange="actualizarContadoresCand()" style="width:17px;height:17px;accent-color:var(--red);cursor:pointer"/></td>
     </tr>`;
   });
-  h += `</tbody></table></div>
+  h += `</tbody><tfoot><tr style="background:var(--bg);font-weight:700">
+      <td colspan="3" style="padding:9px 11px">Seleccionados · <span style="font-weight:500;color:var(--ink3)">Sin grupo: <span id="cand-cnt-S">${lista.length}</span></span></td>
+      <td style="text-align:center;font-size:1.1rem" id="cand-cnt-A">0</td>
+      <td style="text-align:center;font-size:1.1rem" id="cand-cnt-B">0</td>
+    </tr></tfoot></table></div>
     <div class="btn-row">
       <button class="btn btn-dark" id="btn-crear-lista" onclick="crearListado()">✅ Crear listado</button>
     </div>`;
   return h;
+}
+
+function actualizarContadoresCand() {
+  let a = 0, b = 0;
+  candidatos.forEach((c, i) => {
+    const sel = document.querySelector(`input[name="cand-g-${i}"]:checked`);
+    if (sel) { if (sel.value === "A") a++; else b++; }
+  });
+  document.getElementById("cand-cnt-A").textContent = a;
+  document.getElementById("cand-cnt-B").textContent = b;
+  document.getElementById("cand-cnt-S").textContent = candidatos.length - a - b;
 }
 
 async function crearListado() {
@@ -1958,6 +2001,65 @@ async function ejecutarBorrarListado() {
     btn.textContent = "🗑️ Sí, borrar listado";
   }
 }  
+// ══════════════════════════════════════════
+//  ASISTENCIAS DE CANDIDATOS (gráfica colapsable)
+// ══════════════════════════════════════════
+const gAsis = { eval:"A", prin:"A" };
+
+function escAsis(t) {
+  return String(t === null || t === undefined ? "" : t)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function toggleAsistencias(ctx) {
+  const body  = document.getElementById(`asis-${ctx}-body`);
+  const icon  = document.getElementById(`asis-${ctx}-icon`);
+  const abrir = body.style.display === "none";
+  body.style.display = abrir ? "block" : "none";
+  icon.style.transform = abrir ? "rotate(90deg)" : "";
+  if (abrir) cargarAsistenciasCand(ctx);
+}
+
+function switchAsis(ctx, g, btn) {
+  btn.closest(".gtabs").querySelectorAll(".gtab").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  gAsis[ctx] = g;
+  cargarAsistenciasCand(ctx);
+}
+
+async function cargarAsistenciasCand(ctx) {
+  const grupo = gAsis[ctx];
+  const wrap  = document.getElementById(`asis-${ctx}-wrap`);
+  wrap.innerHTML = '<div class="loader">Cargando asistencias…</div>';
+  try {
+    const r = await get("getAsistenciasCandidatos", { grupo });
+    const lista = r.lista || [];
+    let h = `<p style="font-size:.78rem;color:var(--ink3);margin-bottom:.75rem">${
+      r.desdeFecha ? "Asistencias desde el " + escAsis(r.desdeFecha) : "Asistencias totales"}</p>`;
+
+    if (!lista.length) {
+      h += '<div class="loader">Sin alumnos en el listado de este grupo.</div>';
+    } else {
+      const max = Math.max.apply(null, lista.map(x => x.asistencias));
+      lista.forEach(x => {
+        const pct = max > 0 ? (x.asistencias / max) * 100 : 0;
+        h += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:150px;flex-shrink:0;text-align:right;font-size:.76rem;font-weight:600;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAsis(x.nombre)}">${escAsis(x.nombre)}</div>
+          <div style="flex:1;position:relative;height:24px;background:#e8e6e1;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:var(--gold);border-radius:6px"></div>
+            <span style="position:absolute;inset:0;display:flex;align-items:center;padding-left:10px;font-size:.78rem;font-weight:700;color:var(--ink)">${x.asistencias}</span>
+          </div>
+        </div>`;
+      });
+    }
+    if (r.sinCoincidencia && r.sinCoincidencia.length) {
+      h += `<p style="font-size:.74rem;color:var(--red);margin-top:.75rem">No se encontraron en la base general (no se grafican): ${r.sinCoincidencia.map(escAsis).join(", ")}</p>`;
+    }
+    wrap.innerHTML = h;
+  } catch(e) {
+    wrap.innerHTML = `<div class="loader err">Error: ${escAsis(e.message)}</div>`;
+  }
+}
 // ══════════════════════════════════════════
 //  RESET EXAMEN
 // ══════════════════════════════════════════
