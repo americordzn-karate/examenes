@@ -403,8 +403,10 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
     <button class="btn btn-ghost" onclick="cargarConcentrador()">🔄 Actualizar concentrador</button>
         <button class="btn btn-dark" onclick="generarPDFConcentrador()">📄 Exportar PDF</button>
   </div>
-  <div class="btn-row">
-    <button class="btn btn-dark" id="btn-enviar-hist" onclick="enviarCalificacionesHistorial()">📤 Enviar calificaciones a historial</button>
+    <div class="btn-row">
+    <button class="btn btn-dark" id="btn-enviar-hist-A" onclick="enviarCalificacionesHistorial('A')">📤 Enviar Grupo A a historial</button>
+    <button class="btn btn-dark" id="btn-enviar-hist-B" onclick="enviarCalificacionesHistorial('B')">📤 Enviar Grupo B a historial</button>
+    <button class="btn btn-ghost" id="btn-enviar-hist" onclick="enviarCalificacionesHistorial()">📤 Enviar ambos grupos</button>
   </div>
 </section>
 
@@ -2067,21 +2069,31 @@ async function cargarAsistenciasCand(ctx) {
 // ══════════════════════════════════════════
 //  ENVIAR CALIFICACIONES A HISTORIAL
 // ══════════════════════════════════════════
-async function enviarCalificacionesHistorial() {
-  if (!confirm("Se crearán o actualizarán en Grados_Historial los registros del examen más próximo, con la calificación (Promedio Final) y el nuevo grado de cada alumno de los Grupos A y B.\n\nLos alumnos sin promedio se omiten.\n\n¿Desea continuar?")) return;
+async function enviarCalificacionesHistorial(grupo) {
+  const etiqueta = grupo ? "del Grupo " + grupo : "de los Grupos A y B";
+  if (!confirm("Se crearán o actualizarán en Grados_Historial los registros del examen más próximo, con la calificación (Promedio Final) y el nuevo grado de cada alumno " + etiqueta + ".\n\nLos alumnos sin promedio se omiten.\n\n¿Desea continuar?")) return;
 
-  const btn = document.getElementById("btn-enviar-hist");
-  btn.disabled = true;
-  btn.textContent = "Enviando…";
+  const ids = ["btn-enviar-hist-A", "btn-enviar-hist-B", "btn-enviar-hist"];
+  const textos = {};
+  ids.forEach(id => {
+    const b = document.getElementById(id);
+    textos[id] = b.textContent;
+    b.disabled = true;
+  });
+  const activo = document.getElementById(grupo ? "btn-enviar-hist-" + grupo : "btn-enviar-hist");
+  activo.textContent = "Enviando…";
   try {
-    const r = await get("enviarCalificacionesHistorial");
+    const r = await get("enviarCalificacionesHistorial", grupo ? { grupo } : {});
     toast(r.message || "Historial actualizado ✓");
     if (r.avisos && r.avisos.length) alert(r.avisos.join("\n\n"));
   } catch(e) {
     toast("Error: " + e.message, true);
   } finally {
-    btn.disabled = false;
-    btn.textContent = "📤 Enviar calificaciones a historial";
+    ids.forEach(id => {
+      const b = document.getElementById(id);
+      b.disabled = false;
+      b.textContent = textos[id];
+    });
   }
 }
 // ══════════════════════════════════════════
