@@ -401,7 +401,10 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
   <div class="card tbl-wrap" id="conc-wrap"><div class="loader">Cargando…</div></div>
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="cargarConcentrador()">🔄 Actualizar concentrador</button>
-    <button class="btn btn-dark" onclick="generarPDFConcentrador()">📄 Exportar PDF</button>
+        <button class="btn btn-dark" onclick="generarPDFConcentrador()">📄 Exportar PDF</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-dark" id="btn-enviar-hist" onclick="enviarCalificacionesHistorial()">📤 Enviar calificaciones a historial</button>
   </div>
 </section>
 
@@ -2058,6 +2061,27 @@ async function cargarAsistenciasCand(ctx) {
     wrap.innerHTML = h;
   } catch(e) {
     wrap.innerHTML = `<div class="loader err">Error: ${escAsis(e.message)}</div>`;
+  }
+}
+
+// ══════════════════════════════════════════
+//  ENVIAR CALIFICACIONES A HISTORIAL
+// ══════════════════════════════════════════
+async function enviarCalificacionesHistorial() {
+  if (!confirm("Se crearán o actualizarán en Grados_Historial los registros del examen más próximo, con la calificación (Promedio Final) y el nuevo grado de cada alumno de los Grupos A y B.\n\nLos alumnos sin promedio se omiten.\n\n¿Desea continuar?")) return;
+
+  const btn = document.getElementById("btn-enviar-hist");
+  btn.disabled = true;
+  btn.textContent = "Enviando…";
+  try {
+    const r = await get("enviarCalificacionesHistorial");
+    toast(r.message || "Historial actualizado ✓");
+    if (r.avisos && r.avisos.length) alert(r.avisos.join("\n\n"));
+  } catch(e) {
+    toast("Error: " + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "📤 Enviar calificaciones a historial";
   }
 }
 // ══════════════════════════════════════════
