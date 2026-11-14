@@ -1005,7 +1005,7 @@ function buildConcentrador(rows) {
   </div>
   <table><thead><tr><th>#</th><th>Nombre</th><th>Grado</th>`;
   ASPECTOS.forEach(a => { h += `<th>${a}</th>`; });
-  h += `<th>Promedio</th><th>Resultado</th><th>Observaciones</th></tr></thead><tbody>`;
+  h += `<th>Promedio</th><th>Resultado</th><th>Observaciones</th><th style="text-align:center">🏅 Destacado</th><th style="text-align:center">✅ Asistencia</th></tr></thead><tbody>`;
   rows.forEach(r => {
     const pf  = r["Promedio Final"];
     const res = r["Resultado"];
@@ -1015,7 +1015,7 @@ function buildConcentrador(rows) {
     const obs = (r["Observaciones"] || "").replace(/\n/g, "<br>");
     h += `<tr><td>${r.Numero||""}</td><td>${r.Nombre||""}</td><td>${r.Grado||""}</td>`;
     ASPECTOS.forEach(a => { h += `<td>${r[a]||"—"}</td>`; });
-    h += `<td><span class="badge b-prom">${pf||"—"}</span></td><td>${rb}</td><td style="font-size:.78rem;color:var(--ink2);white-space:pre-wrap;max-width:200px">${obs}</td></tr>`;
+    h += `<td><span class="badge b-prom">${pf||"—"}</span></td><td>${rb}</td><td style="font-size:.78rem;color:var(--ink2);white-space:pre-wrap;max-width:200px">${obs}</td>${celdasMedallas_(r.Numero)}</tr>`;
   });
   h += `</tbody></table>`;
   return h;
@@ -2069,9 +2069,43 @@ async function cargarAsistenciasCand(ctx) {
 // ══════════════════════════════════════════
 //  ENVIAR CALIFICACIONES A HISTORIAL
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+//  MEDALLAS DEL CONCENTRADOR (Destacado y Asistencia)
+// ══════════════════════════════════════════
+const medallas = { A:{}, B:{} };
+
+function celdasMedallas_(numero) {
+  const g = gActivo.conc;
+  const num = String(numero === undefined || numero === null ? "" : numero);
+  const m = (medallas[g] && medallas[g][num]) || {};
+  const celda = (campo) =>
+    `<td style="text-align:center"><input type="checkbox" style="width:17px;height:17px;accent-color:var(--gold);cursor:pointer"${m[campo] ? " checked" : ""} onchange="marcarMedalla('${g}','${escAsis(num)}','${campo}',this.checked)"/></td>`;
+  return celda("destacado") + celda("asistencia");
+}
+
+function marcarMedalla(grupo, num, campo, valor) {
+  if (!medallas[grupo][num]) medallas[grupo][num] = { destacado: false, asistencia: false };
+  medallas[grupo][num][campo] = !!valor;
+}
+
+function listaMedallas_(grupo, campo) {
+  return Object.keys(medallas[grupo]).filter(n => medallas[grupo][n][campo]);
+}
+
+// ══════════════════════════════════════════
+//  ENVIAR CALIFICACIONES A HISTORIAL
+// ══════════════════════════════════════════
 async function enviarCalificacionesHistorial(grupo) {
   const etiqueta = grupo ? "del Grupo " + grupo : "de los Grupos A y B";
-  if (!confirm("Se crearán o actualizarán en Grados_Historial los registros del examen más próximo, con la calificación (Promedio Final) y el nuevo grado de cada alumno " + etiqueta + ".\n\nLos alumnos sin promedio se omiten.\n\n¿Desea continuar?")) return;
+  const gruposEnvio = grupo ? [grupo] : ["A", "B"];
+
+  let nDest = 0, nAsis = 0;
+  gruposEnvio.forEach(g => {
+    nDest += listaMedallas_(g, "destacado").length;
+    nAsis += listaMedallas_(g, "asistencia").length;
+  });
+
+  if (!confirm("Se crearán o actualizarán en Grados_Historial los registros del examen más próximo, con la calificación (Promedio Final) y el nuevo grado de cada alumno " + etiqueta + ".\n\nLos alumnos sin promedio se omiten.\n\nMedallas marcadas: " + nDest + " de examen destacado y " + nAsis + " de asistencia perfecta.\n\n¿Desea continuar?")) return;
 
   const ids = ["btn-enviar-hist-A", "btn-enviar-hist-B", "btn-enviar-hist"];
   const textos = {};
@@ -2082,8 +2116,15 @@ async function enviarCalificacionesHistorial(grupo) {
   });
   const activo = document.getElementById(grupo ? "btn-enviar-hist-" + grupo : "btn-enviar-hist");
   activo.textContent = "Enviando…";
+
+  const params = grupo ? { grupo } : {};
+  gruposEnvio.forEach(g => {
+    params["destacados" + g] = listaMedallas_(g, "destacado").join(",");
+    params["asistencia" + g] = listaMedallas_(g, "asistencia").join(",");
+  });
+
   try {
-    const r = await get("enviarCalificacionesHistorial", grupo ? { grupo } : {});
+    const r = await get("enviarCalificacionesHistorial", params);
     toast(r.message || "Historial actualizado ✓");
     if (r.avisos && r.avisos.length) alert(r.avisos.join("\n\n"));
   } catch(e) {
@@ -2120,6 +2161,7 @@ async function ejecutarResetExamen() {
     ["A","B"].forEach(g => {
       buf.eval[g] = {};
       buf.prin[g] = {};
+            medallas[g] = {};
     });
   } catch(e) {
     cerrarModalReset();
