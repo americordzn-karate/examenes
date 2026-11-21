@@ -2284,10 +2284,33 @@ const CERT_GRADOS = {
 };
 const CERT_MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
-// "8 kyu" → [..]; "CN 1 dan" o desconocido → null
-function certGradoInfo(txt) {
-  const m = String(txt === null || txt === undefined ? "" : txt).match(/^\s*(\d+)\s*kyu/i);
-  return m ? (CERT_GRADOS[parseInt(m[1], 10)] || null) : null;
+// Número de dan: "CN 2 dan" → 2 (0 si no es dan)
+function certDanNum(txt) {
+  const m = String(txt === null || txt === undefined ? "" : txt).match(/^\s*CN\s*(\d+)\s*dan/i);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+// Segmentos de la línea de grado [{t, sup}]; null si no hay diseño o falta definir la variante.
+// variante (solo "CN 1 dan"): "dan" = Cinta Negra 1er Dan, "shodanho" = Cinta Negra ShoDan-Ho
+function certGradoSegmentos(txt, variante) {
+  const k = String(txt === null || txt === undefined ? "" : txt).match(/^\s*(\d+)\s*kyu/i);
+  if (k) {
+    const i = CERT_GRADOS[parseInt(k[1], 10)];
+    if (!i) return null;
+    const seg = [{ t: i[0] }];
+    if (i[2]) seg.push({ t: i[2], sup: true });
+    seg.push({ t: " Kyu - " + i[1] });
+    return seg;
+  }
+  const d = certDanNum(txt);
+  if (d === 1 && variante === "shodanho") return [{ t: "Cinta Negra ShoDan-Ho" }];
+  if (d === 1 && variante !== "dan") return null;
+  if (d === 1 || d === 3) return [{ t: "Cinta Negra " + d }, { t: "ER", sup: true }, { t: " Dan" }];
+  if (d === 2 || d === 4) return [{ t: "Cinta Negra " + d + "° Dan" }];
+  return null;
+}
+function certGradoPlano(seg) {
+  return seg.map(x => x.sup ? x.t.toLowerCase() : x.t).join("");
 }
 
 // Estación por calendario astronómico (hemisferio norte), fecha "aaaa-mm-dd"
@@ -2387,12 +2410,10 @@ function certTextoAjustado(c, t, cfg, color) {
   certTexto(c, t, cfg.fuente, s, cfg.cx, cfg.base, color);
 }
 
-// Línea de grado: "9° Kyu - Cinta Verde" o "1ER Kyu - Cinta Café Avanzada" (ER en superíndice)
-function certGradoLinea(c, info, color) {
+// Línea de grado ("9° Kyu - Cinta Verde", "Cinta Negra 3ER Dan"...); los segmentos "sup" van en superíndice
+function certGradoLinea(c, segs, color) {
   const G = CERT.GRADO, fam = G.fuente;
-  const partes = [{ t: info[0], k: 1, up: 0 }];
-  if (info[2]) partes.push({ t: info[2], k: G.supEscala, up: G.supSube });
-  partes.push({ t: " Kyu - " + info[1], k: 1, up: 0 });
+  const partes = segs.map(x => ({ t: x.t, k: x.sup ? G.supEscala : 1, up: x.sup ? G.supSube : 0 }));
   const medir = (s) => partes.map(p => { c.font = (s * p.k) + "px " + fam; return c.measureText(p.t).width; });
   let s = G.size, anchos = medir(s), total = anchos.reduce((a, b) => a + b, 0);
   if (total > G.max) { s = s * G.max / total; anchos = medir(s); total = G.max; }
@@ -2407,8 +2428,8 @@ function certGradoLinea(c, info, color) {
 
 // d = { nombre, katakana, grado, fechaISO }  → canvas 2550×3300
 async function certRender(d) {
-  const info = certGradoInfo(d.grado);
-  if (!info) throw new Error("Grado sin diseño de certificado: " + d.grado);
+  const segs = certGradoSegmentos(d.grado, d.variante);
+  if (!segs) throw new Error("Grado sin diseño de certificado (o falta elegir la variante): " + d.grado);
   const kata = String(d.katakana || "").replace(/[\s　]+/g, " ").trim();
   await certFuentes(kata);
   const estacion = d.estacion || certEstacion(d.fechaISO);
@@ -2453,7 +2474,7 @@ async function certRender(d) {
   CERT.FIJOS.forEach(f => certTexto(c, f[0], f[1], f[2], f[3], f[4], f[5]));
   certTextoAjustado(c, certNombreTitulo(d.nombre), CERT.NOMBRE, CERT.ORO);
   if (kata) certTextoAjustado(c, kata, CERT.KATAKANA, CERT.KATAKANA.color);
-  certGradoLinea(c, info, "#000000");
+  certGradoLinea(c, segs, "#000000");
   certTextoAjustado(c, certFechaTexto(d.fechaISO), CERT.FECHA, "#000000");
   c.restore();
   return cv;
@@ -2507,11 +2528,13 @@ function buildCertificados(r) {
   <div class="tbl-wrap"><table>
     <thead><tr><th style="width:34px"></th><th>Alumno</th><th>Nuevo grado</th><th>Calif.</th><th>Katakana</th><th>Certificado</th><th style="width:46px"></th></tr></thead><tbody>`;
   r.alumnos.forEach((a, i) => {
-    const info = certGradoInfo(a.grado);
+    const info = certGradoSegmentos(a.grado, "dan");
+    const esDan1 = certDanNum(a.grado) === 1;
     const tiene = !!a.certificado;
-    const gradoTxt = info ? (info[0] + (info[2] ? info[2].toLowerCase() : "") + " Kyu") : certEsc(a.grado);
+    const gradoTxt = certEsc(info ? certGradoPlano(info) : a.grado) + (esDan1 && info
+      ? `<select id="cert-var-${i}" onchange="this.style.borderColor=this.value?'var(--border)':'var(--red)'" style="display:block;margin-top:4px;border:1px solid var(--red);border-radius:5px;padding:4px 6px;font-family:var(--font);font-size:.8rem"><option value="">Elija el grado…</option><option value="dan">Cinta Negra 1er Dan</option><option value="shodanho">Cinta Negra ShoDan-Ho</option></select>` : "");
     const estado = !info
-      ? '<span style="color:var(--ink3)">Sin diseño (grado Dan)</span>'
+      ? '<span style="color:var(--ink3)">Sin diseño para este grado</span>'
       : (tiene ? `<a href="${certEsc(a.certificado)}" target="_blank" rel="noopener">📄 Ver PDF</a>` : '<span style="color:var(--ink3)">Pendiente</span>');
     const faltaKata = !a.katakana;
     h += `<tr>
@@ -2563,12 +2586,16 @@ function certDatosAlumno(i) {
   return {
     nombre: a.nombre,
     katakana: document.getElementById("cert-kata-" + i).value,
+    variante: (document.getElementById("cert-var-" + i) || {}).value || "",
     grado: a.grado,
     fechaISO: certDatos.fecha
   };
 }
 
 async function previsualizarCertificado(i) {
+  if (document.getElementById("cert-var-" + i) && !document.getElementById("cert-var-" + i).value) {
+    toast("Elija primero Cinta Negra 1er Dan o ShoDan-Ho.", true); return;
+  }
   try {
     toast("Generando vista previa…");
     const cv = await certRender(certDatosAlumno(i));
@@ -2612,6 +2639,11 @@ async function generarCertificados() {
   });
   if (!idx.length) { toast("Seleccione al menos un alumno.", true); return; }
 
+  const sinVar = idx.filter(i => document.getElementById("cert-var-" + i) && !document.getElementById("cert-var-" + i).value);
+  if (sinVar.length) {
+    alert("Elija Cinta Negra 1er Dan o ShoDan-Ho para:\n\n" + sinVar.map(i => certNombreTitulo(certDatos.alumnos[i].nombre)).join("\n"));
+    return;
+  }
   const sinKata = idx.filter(i => !document.getElementById("cert-kata-" + i).value.trim());
   if (sinKata.length && !confirm(sinKata.length + " alumno(s) no tienen katakana; su certificado se generará SIN esa línea.\n\n¿Desea continuar?")) return;
   if (!confirm("Se generarán " + idx.length + " certificado(s) y se guardarán en Drive.\nSi ya existe un PDF del mismo alumno y examen, se reemplazará.\n\n¿Desea continuar?")) return;
