@@ -11,6 +11,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
+  @font-face{font-family:'CertNoodle';src:url('BIG_NOODLE_TITLING_OBLIQUE.TTF') format('truetype')}
+  @font-face{font-family:'CertBerlin';src:url('BRLNSR.TTF') format('truetype')}
+  @font-face{font-family:'CertMeiryo';src:url('meiryo-katakana.woff2') format('woff2')}
   .login-screen{
 
   position:fixed;
@@ -410,6 +413,18 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
     <button class="btn btn-dark" id="btn-enviar-hist-B" onclick="enviarCalificacionesHistorial('B')">📤 Enviar Grupo B a historial</button>
     <button class="btn btn-ghost" id="btn-enviar-hist" onclick="enviarCalificacionesHistorial()">📤 Enviar ambos grupos</button>
   </div>
+
+  <hr class="div"/>
+  <h2 class="stitle">🎓 Certificados</h2>
+  <div class="card">
+    <p style="font-size:.84rem;color:var(--ink3);margin-bottom:.75rem">Genera el certificado en PDF de cada alumno con calificación en el examen, lo guarda en la carpeta de Drive y registra el enlace en la columna <strong>Certificado</strong> de Grados_Historial. Antes, envíe las calificaciones al historial.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <label for="cert-examen" style="font-size:.84rem;font-weight:600;color:var(--ink2)">Examen</label>
+      <select id="cert-examen" onchange="cargarCertificados(this.value)" style="border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-family:var(--font);font-size:.86rem;background:var(--white)"></select>
+      <button class="btn btn-dark" onclick="cargarCertificados()">📋 Cargar alumnos del examen</button>
+    </div>
+    <div id="cert-wrap" style="margin-top:1rem"></div>
+  </div>
 </section>
 
 <!-- ══════════════════════════════════════════
@@ -554,6 +569,14 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
       <button class="btn btn-ghost" onclick="cerrarModalQR()">Cerrar</button>
       <button class="btn btn-dark" onclick="copiarUrlQR()">📋 Copiar URL</button>
     </div>
+  </div>
+</div>
+<!-- MODAL VISTA PREVIA DE CERTIFICADO -->
+<div id="modal-cert" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9998;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)cerrarModalCert()">
+  <div style="background:#fff;border-radius:14px;padding:16px;max-width:min(92vw,720px);max-height:94vh;display:flex;flex-direction:column;gap:12px;align-items:center;overflow:auto">
+    <div id="modal-cert-titulo" style="font-family:var(--font-h);font-weight:700"></div>
+    <img id="modal-cert-img" alt="Vista previa del certificado" style="max-width:100%;max-height:76vh;border:1px solid var(--border)"/>
+    <button class="btn btn-ghost" onclick="cerrarModalCert()">Cerrar</button>
   </div>
 </div>
 <div id="toast"></div>
@@ -2206,6 +2229,427 @@ async function copiarUrlQR() {
     document.body.removeChild(t);
   }
 }
+// ══════════════════════════════════════════
+//  CERTIFICADOS DE EXAMEN (PDF → Drive → Grados_Historial)
+//  El lienzo se dibuja a 300 ppp (2× la plantilla de 150 ppp);
+//  todas las coordenadas están en píxeles de la plantilla (1275×1650).
+// ══════════════════════════════════════════
+const CERT = {
+  W: 1275, H: 1650, S: 2,
+  QR_URL: "https://www.senshikan.com/examen",
+  TINTA: "#000000",
+  GRIS:  "#645c5d",
+  ORO:   "#dab130",
+  // Capas de tinta negra: se reescalan con borde nítido (x, y, ancho, alto en la plantilla)
+  NITIDAS: [
+    ["karatedo.png",            315, 173, 204, 549],
+    ["shitoryu_plantilla.png",  528, 166, 172, 560],
+    ["senshikankarate.png",     115, 173,  36, 354],
+    ["examen.png",              185, 174,  36,  67],
+    ["mexico.png",              186, 319,  34, 103],
+    ["senseiamerico.png",       255, 172,  36, 522]
+  ],
+  KANJI_ESTACION: { primavera:"kanjiprimavera.png", verano:"kanjiverano.png", otono:"kanjiotono.png", invierno:"kanjiinvierno.png" },
+  KANJI_CX: 203.5, KANJI_TOP: 248,
+  ESCUDO:    ["escudo.png", 825, 72, 394, 394],
+  FIRMA:     ["Firma.png", 613, 1337, 178, 189],
+  TRIANGULOS:["triangulosinferiores.png", 0, 1174.8, 1275, 475.2],
+  QR_ORIGEN: [117, 608], QR_LADO: 107,
+  // Textos fijos: [texto, fuente, tamaño, centro x, línea base y, color]
+  FIJOS: [
+    ["ACADEMIA DE KARATE SENSHI-KAN", "CertNoodle", 64.0,  666.1,  837, "#000000"],
+    ["OTORGA EL PRESENTE",            "CertBerlin", 22.05, 674.9,  870, "#000000"],
+    ["Certificado",                   "CertBerlin", 83.33, 671.8,  937, "#000000"],
+    ["a:",                            "CertBerlin", 24.16, 675.1,  965, "#000000"],
+    ["Por haber presentado y aprobado el examen correspondiente a", "CertBerlin", 30.49, 665.9, 1132, "#000000"],
+    ["Cd. Reynosa, Tam.",             "CertBerlin", 24.8,  675.7, 1233, "#000000"]
+  ],
+  // Se dibujan DEBAJO de la firma
+  FIJOS_BAJO_FIRMA: [
+    ["Sensei Américo Rodríguez Nava", "CertBerlin", 20.83, 676.4, 1458, "#645c5d"],
+    ["DIRECTOR",                      "CertBerlin", 15.99, 675.8, 1472, "#645c5d"]
+  ],
+  // Campos variables
+  NOMBRE:  { fuente:"CertBerlin", size:71.08, cx:671.2, base:1036, max:820 },
+  KATAKANA:{ fuente:"CertMeiryo", size:36.34, cx:671.2, base:1077, max:820, color:"#272727" },
+  GRADO:   { fuente:"CertBerlin", size:66.0,  cx:664.0, base:1192, max:900, supEscala:0.40, supSube:15 },
+  FECHA:   { fuente:"CertBerlin", size:26.68, cx:678.4, base:1273, max:700 }
+};
+
+// Grado obtenido → [número, cinta, superíndice]
+const CERT_GRADOS = {
+  9:["9°","Cinta Blanca/Amarilla"], 8:["8°","Cinta Amarilla"], 7:["7°","Cinta Naranja"],
+  6:["6°","Cinta Verde"], 5:["5°","Cinta Verde Avanzada"], 4:["4°","Cinta Azul"],
+  3:["3°","Cinta Azul Avanzada"], 2:["2°","Cinta Café"], 1:["1","Cinta Café Avanzada","ER"]
+};
+const CERT_MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+// "8 kyu" → [..]; "CN 1 dan" o desconocido → null
+function certGradoInfo(txt) {
+  const m = String(txt === null || txt === undefined ? "" : txt).match(/^\s*(\d+)\s*kyu/i);
+  return m ? (CERT_GRADOS[parseInt(m[1], 10)] || null) : null;
+}
+
+// Estación por calendario astronómico (hemisferio norte), fecha "aaaa-mm-dd"
+function certEstacion(iso) {
+  const p = String(iso || "").split("-").map(Number);
+  const md = (p[1] || 0) * 100 + (p[2] || 0);
+  if (md >= 1221 || md < 320) return "invierno";
+  if (md >= 923) return "otono";
+  if (md >= 621) return "verano";
+  return "primavera";
+}
+
+function certFechaTexto(iso) {
+  const p = String(iso || "").split("-").map(Number);
+  return p[2] + " de " + CERT_MESES[p[1] - 1] + " de " + p[0];
+}
+
+function certNombreTitulo(s) {
+  const minus = ["de","del","la","las","los","y","e","da","das","do","dos","di","van","von"];
+  return String(s || "").trim().toLowerCase().split(/\s+/).map((w, i) =>
+    (i > 0 && minus.indexOf(w) >= 0) ? w :
+      w.replace(/(^|[-'’])(\p{L})/gu, (m, a, b) => a + b.toUpperCase())
+  ).join(" ");
+}
+
+// ── Carga de recursos (fuentes e imágenes) ──
+const _certImg = {};
+function certImagen(src) {
+  if (!_certImg[src]) {
+    _certImg[src] = new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => rej(new Error("No se pudo cargar la imagen: " + src));
+      im.src = src;
+    });
+  }
+  return _certImg[src];
+}
+
+async function certFuentes(extraKatakana) {
+  await Promise.all([
+    document.fonts.load("64px CertNoodle", "ACADEMIA"),
+    document.fonts.load("30px CertBerlin", "Certificado áéíóúñ°"),
+    document.fonts.load("36px CertMeiryo", extraKatakana || "ロドリゴ")
+  ]);
+}
+
+// Reescala una capa de tinta con borde nítido (el alfa se endurece tras ampliar)
+function certCapaNitida(img, w, h) {
+  const S = CERT.S, o = document.createElement("canvas");
+  o.width = Math.round(w * S); o.height = Math.round(h * S);
+  const x = o.getContext("2d", { willReadFrequently: true });
+  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high";
+  x.drawImage(img, 0, 0, o.width, o.height);
+  const id = x.getImageData(0, 0, o.width, o.height), d = id.data;
+  const lo = 0.25, hi = 0.75;
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    let t = Math.min(d[i + 3], 255 - lum) / 255;
+    t = t <= lo ? 0 : t >= hi ? 1 : (t - lo) / (hi - lo);
+    t = t * t * (3 - 2 * t);
+    d[i] = d[i + 1] = d[i + 2] = 0; d[i + 3] = Math.round(t * 255);
+  }
+  x.putImageData(id, 0, 0);
+  return o;
+}
+
+let _certQR = null;
+function certQRModulos() {
+  if (_certQR) return _certQR;
+  const tmp = document.createElement("div");
+  tmp.style.cssText = "position:fixed;left:-9999px;top:0";
+  document.body.appendChild(tmp);
+  const q = new QRCode(tmp, { text: CERT.QR_URL, width: 128, height: 128, correctLevel: QRCode.CorrectLevel.M });
+  const m = q._oQRCode, n = m.getModuleCount(), g = [];
+  for (let r = 0; r < n; r++) {
+    const fila = [];
+    for (let c = 0; c < n; c++) fila.push(m.isDark(r, c));
+    g.push(fila);
+  }
+  document.body.removeChild(tmp);
+  return (_certQR = g);
+}
+
+function certTexto(c, t, fuente, size, cx, base, color) {
+  c.font = size + "px " + fuente; c.fillStyle = color;
+  c.textAlign = "center"; c.textBaseline = "alphabetic";
+  c.fillText(t, cx, base);
+}
+
+// Texto variable que se reduce si excede el ancho máximo
+function certTextoAjustado(c, t, cfg, color) {
+  let s = cfg.size;
+  c.font = s + "px " + cfg.fuente;
+  const w = c.measureText(t).width;
+  if (w > cfg.max) s = s * cfg.max / w;
+  certTexto(c, t, cfg.fuente, s, cfg.cx, cfg.base, color);
+}
+
+// Línea de grado: "9° Kyu - Cinta Verde" o "1ER Kyu - Cinta Café Avanzada" (ER en superíndice)
+function certGradoLinea(c, info, color) {
+  const G = CERT.GRADO, fam = G.fuente;
+  const partes = [{ t: info[0], k: 1, up: 0 }];
+  if (info[2]) partes.push({ t: info[2], k: G.supEscala, up: G.supSube });
+  partes.push({ t: " Kyu - " + info[1], k: 1, up: 0 });
+  const medir = (s) => partes.map(p => { c.font = (s * p.k) + "px " + fam; return c.measureText(p.t).width; });
+  let s = G.size, anchos = medir(s), total = anchos.reduce((a, b) => a + b, 0);
+  if (total > G.max) { s = s * G.max / total; anchos = medir(s); total = G.max; }
+  let x = G.cx - total / 2;
+  c.fillStyle = color; c.textAlign = "left"; c.textBaseline = "alphabetic";
+  partes.forEach((p, i) => {
+    c.font = (s * p.k) + "px " + fam;
+    c.fillText(p.t, x, G.base - p.up * (s / G.size));
+    x += anchos[i];
+  });
+}
+
+// d = { nombre, katakana, grado, fechaISO }  → canvas 2550×3300
+async function certRender(d) {
+  const info = certGradoInfo(d.grado);
+  if (!info) throw new Error("Grado sin diseño de certificado: " + d.grado);
+  const kata = String(d.katakana || "").replace(/[\s　]+/g, " ").trim();
+  await certFuentes(kata);
+  const estacion = d.estacion || certEstacion(d.fechaISO);
+
+  const [escudo, firma, tri, kanji] = await Promise.all([
+    certImagen(CERT.ESCUDO[0]), certImagen(CERT.FIRMA[0]),
+    certImagen(CERT.TRIANGULOS[0]), certImagen(CERT.KANJI_ESTACION[estacion])
+  ]);
+  const nitidas = await Promise.all(CERT.NITIDAS.map(a => certImagen(a[0])));
+
+  const S = CERT.S, cv = document.createElement("canvas");
+  cv.width = CERT.W * S; cv.height = CERT.H * S;
+  const c = cv.getContext("2d");
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high";
+  c.fillStyle = "#fff"; c.fillRect(0, 0, cv.width, cv.height);
+  c.save(); c.scale(S, S);
+
+  // 1) Triángulos inferiores
+  const T = CERT.TRIANGULOS; c.drawImage(tri, T[1], T[2], T[3], T[4]);
+  // 2) Nombre del director (queda debajo de la firma)
+  CERT.FIJOS_BAJO_FIRMA.forEach(f => certTexto(c, f[0], f[1], f[2], f[3], f[4], f[5]));
+  // 3) Firma
+  const F = CERT.FIRMA; c.drawImage(firma, F[1], F[2], F[3], F[4]);
+  // 4) Escudo
+  const E = CERT.ESCUDO; c.drawImage(escudo, E[1], E[2], E[3], E[4]);
+  // 5) Kanjis (tinta negra, borde nítido)
+  c.restore();
+  CERT.NITIDAS.forEach((a, i) => c.drawImage(certCapaNitida(nitidas[i], a[3], a[4]), Math.round(a[1] * S), Math.round(a[2] * S)));
+  const kw = kanji.naturalWidth, kh = kanji.naturalHeight;
+  c.drawImage(certCapaNitida(kanji, kw, kh), Math.round((CERT.KANJI_CX - kw / 2) * S), Math.round(CERT.KANJI_TOP * S));
+  // 6) QR (107 px de la plantilla, bordes alineados a píxel: sin suavizado)
+  const q = certQRModulos(), n = q.length, lado = CERT.QR_LADO * S;
+  const ox = Math.round(CERT.QR_ORIGEN[0] * S), oy = Math.round(CERT.QR_ORIGEN[1] * S);
+  c.fillStyle = "#000";
+  for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q[r][k]) {
+    const x0 = ox + Math.round(k * lado / n), x1 = ox + Math.round((k + 1) * lado / n);
+    const y0 = oy + Math.round(r * lado / n), y1 = oy + Math.round((r + 1) * lado / n);
+    c.fillRect(x0, y0, x1 - x0, y1 - y0);
+  }
+  // 7) Textos
+  c.save(); c.scale(S, S);
+  CERT.FIJOS.forEach(f => certTexto(c, f[0], f[1], f[2], f[3], f[4], f[5]));
+  certTextoAjustado(c, certNombreTitulo(d.nombre), CERT.NOMBRE, CERT.ORO);
+  if (kata) certTextoAjustado(c, kata, CERT.KATAKANA, CERT.KATAKANA.color);
+  certGradoLinea(c, info, "#000000");
+  certTextoAjustado(c, certFechaTexto(d.fechaISO), CERT.FECHA, "#000000");
+  c.restore();
+  return cv;
+}
+
+// Canvas → PDF carta (base64 sin prefijo)
+function certPDFBase64(cv, titulo) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
+  doc.setProperties({ title: titulo || "Certificado", author: "Academia de Karate Senshi-Kan" });
+  doc.addImage(cv.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, 215.9, 279.4, undefined, "FAST");
+  return doc.output("datauristring").split(",")[1];
+}
+
+// ── Interfaz: lista de alumnos, vista previa, generación y subida ──
+let certDatos = null;
+let certOcupado = false;
+
+function certEsc(t) {
+  return String(t === null || t === undefined ? "" : t)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function certFechaCorta(iso) {
+  const p = String(iso || "").split("-");
+  return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : "";
+}
+
+async function cargarCertificados(examenId) {
+  const wrap = document.getElementById("cert-wrap");
+  wrap.innerHTML = '<div class="loader">Cargando alumnos del examen…</div>';
+  try {
+    const r = await get("getCertificadosExamen", { token: tokenActual, examenId: examenId || "" });
+    certDatos = r;
+    const sel = document.getElementById("cert-examen");
+    sel.innerHTML = (r.examenes || []).map(e =>
+      `<option value="${certEsc(e.id)}"${e.id === r.examenId ? " selected" : ""}>${certEsc(certFechaCorta(e.fecha))} · ${certEsc(e.id)}</option>`
+    ).join("");
+    wrap.innerHTML = buildCertificados(r);
+  } catch (e) {
+    wrap.innerHTML = `<div class="loader err">Error: ${certEsc(e.message)}</div>`;
+  }
+}
+
+function buildCertificados(r) {
+  if (!r.alumnos || !r.alumnos.length) {
+    return '<div class="loader">No hay registros con calificación en Grados_Historial. Envíe primero las calificaciones al historial.</div>';
+  }
+  const est = certEstacion(r.fecha);
+  const estTxt = { primavera: "Primavera 春", verano: "Verano 夏", otono: "Otoño 秋", invierno: "Invierno 冬" }[est];
+  let h = `<p style="font-size:.8rem;color:var(--ink3);margin-bottom:.6rem">Examen del <strong>${certEsc(certFechaTexto(r.fecha))}</strong> · Kanji de estación: <strong>${estTxt}</strong></p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th style="width:34px"></th><th>Alumno</th><th>Nuevo grado</th><th>Calif.</th><th>Katakana</th><th>Certificado</th><th style="width:46px"></th></tr></thead><tbody>`;
+  r.alumnos.forEach((a, i) => {
+    const info = certGradoInfo(a.grado);
+    const tiene = !!a.certificado;
+    const gradoTxt = info ? (info[0] + (info[2] ? info[2].toLowerCase() : "") + " Kyu") : certEsc(a.grado);
+    const estado = !info
+      ? '<span style="color:var(--ink3)">Sin diseño (grado Dan)</span>'
+      : (tiene ? `<a href="${certEsc(a.certificado)}" target="_blank" rel="noopener">📄 Ver PDF</a>` : '<span style="color:var(--ink3)">Pendiente</span>');
+    const faltaKata = !a.katakana;
+    h += `<tr>
+      <td><input type="checkbox" id="cert-chk-${i}" style="width:17px;height:17px;accent-color:var(--red)" ${(!info || tiene) ? "" : "checked"} ${info ? "" : "disabled"}/></td>
+      <td>${certEsc(certNombreTitulo(a.nombre))}</td>
+      <td>${gradoTxt}</td>
+      <td>${certEsc(Number(a.calificacion).toFixed(2))}</td>
+      <td><input type="text" id="cert-kata-${i}" value="${certEsc(a.katakana)}" placeholder="Falta katakana" ${info ? "" : "disabled"}
+        oninput="this.style.borderColor=this.value.trim()?'var(--border)':'var(--red)'"
+        style="border:1px solid ${faltaKata ? "var(--red)" : "var(--border)"};border-radius:5px;padding:5px 8px;width:190px;font-size:.84rem;font-family:'Meiryo','Yu Gothic',sans-serif"/></td>
+      <td id="cert-st-${i}">${estado}</td>
+      <td>${info ? `<button class="btn btn-ghost" style="padding:4px 9px" title="Vista previa" onclick="previsualizarCertificado(${i})">👁</button>` : ""}</td>
+    </tr>`;
+  });
+  h += `</tbody></table></div>
+  <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:.9rem">
+    <label style="font-size:.84rem;display:flex;align-items:center;gap:6px;cursor:pointer">
+      <input type="checkbox" id="cert-regen" onchange="certMarcarExistentes(this.checked)" style="width:16px;height:16px;accent-color:var(--red)"/>
+      Incluir alumnos que ya tienen certificado (se reemplaza el PDF)
+    </label>
+  </div>
+  <div id="cert-prog-wrap" style="display:none;margin-top:.9rem">
+    <div style="height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden"><div id="cert-prog-bar" style="height:100%;width:0%;background:var(--gold);transition:width .25s"></div></div>
+    <div id="cert-prog-txt" style="font-size:.8rem;color:var(--ink3);margin-top:6px"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-red" id="btn-cert-gen" onclick="generarCertificados()">🎓 Generar certificados seleccionados</button>
+    <button class="btn btn-ghost" onclick="certSeleccionar(true)">Seleccionar todos</button>
+    <button class="btn btn-ghost" onclick="certSeleccionar(false)">Ninguno</button>
+  </div>`;
+  return h;
+}
+
+function certSeleccionar(v) {
+  certDatos.alumnos.forEach((a, i) => {
+    const c = document.getElementById("cert-chk-" + i);
+    if (c && !c.disabled) c.checked = v;
+  });
+}
+function certMarcarExistentes(v) {
+  certDatos.alumnos.forEach((a, i) => {
+    const c = document.getElementById("cert-chk-" + i);
+    if (c && !c.disabled && a.certificado) c.checked = v;
+  });
+}
+
+function certDatosAlumno(i) {
+  const a = certDatos.alumnos[i];
+  return {
+    nombre: a.nombre,
+    katakana: document.getElementById("cert-kata-" + i).value,
+    grado: a.grado,
+    fechaISO: certDatos.fecha
+  };
+}
+
+async function previsualizarCertificado(i) {
+  try {
+    toast("Generando vista previa…");
+    const cv = await certRender(certDatosAlumno(i));
+    document.getElementById("modal-cert-titulo").textContent = certNombreTitulo(certDatos.alumnos[i].nombre);
+    document.getElementById("modal-cert-img").src = cv.toDataURL("image/jpeg", 0.85);
+    document.getElementById("modal-cert").style.display = "flex";
+  } catch (e) {
+    toast("Error: " + e.message, true);
+  }
+}
+function cerrarModalCert() {
+  document.getElementById("modal-cert").style.display = "none";
+  document.getElementById("modal-cert-img").src = "";
+}
+
+async function subirCertificado(payload) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    mode: "cors",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(Object.assign({ action: "guardarCertificado", token: tokenActual }, payload))
+  });
+  const txt = await res.text();
+  let j;
+  try { j = JSON.parse(txt); } catch (e) { throw new Error("Respuesta inválida del servidor"); }
+  if (j.error) throw new Error(j.error);
+  return j;
+}
+
+function certEstado(i, html) {
+  const el = document.getElementById("cert-st-" + i);
+  if (el) el.innerHTML = html;
+}
+
+async function generarCertificados() {
+  if (certOcupado || !certDatos) return;
+  const idx = [];
+  certDatos.alumnos.forEach((a, i) => {
+    const c = document.getElementById("cert-chk-" + i);
+    if (c && c.checked && !c.disabled) idx.push(i);
+  });
+  if (!idx.length) { toast("Seleccione al menos un alumno.", true); return; }
+
+  const sinKata = idx.filter(i => !document.getElementById("cert-kata-" + i).value.trim());
+  if (sinKata.length && !confirm(sinKata.length + " alumno(s) no tienen katakana; su certificado se generará SIN esa línea.\n\n¿Desea continuar?")) return;
+  if (!confirm("Se generarán " + idx.length + " certificado(s) y se guardarán en Drive.\nSi ya existe un PDF del mismo alumno y examen, se reemplazará.\n\n¿Desea continuar?")) return;
+
+  certOcupado = true;
+  const btn = document.getElementById("btn-cert-gen");
+  const wrap = document.getElementById("cert-prog-wrap"), bar = document.getElementById("cert-prog-bar"), txt = document.getElementById("cert-prog-txt");
+  btn.disabled = true; wrap.style.display = "block";
+  let ok = 0;
+  const errores = [];
+
+  for (let n = 0; n < idx.length; n++) {
+    const i = idx[n], a = certDatos.alumnos[i];
+    bar.style.width = Math.round(n / idx.length * 100) + "%";
+    txt.textContent = "Generando " + (n + 1) + " de " + idx.length + ": " + certNombreTitulo(a.nombre);
+    try {
+      certEstado(i, "⏳ Generando…");
+      const d = certDatosAlumno(i);
+      const cv = await certRender(d);
+      const pdf = certPDFBase64(cv, "Certificado - " + certNombreTitulo(a.nombre));
+      certEstado(i, "⬆️ Subiendo…");
+      const r = await subirCertificado({ examenId: certDatos.examenId, alumnoId: a.alumnoId, katakana: d.katakana, pdf });
+      a.certificado = r.url;
+      certEstado(i, `<a href="${certEsc(r.url)}" target="_blank" rel="noopener">✅ Ver PDF</a>`);
+      ok++;
+    } catch (e) {
+      errores.push(certNombreTitulo(a.nombre) + ": " + e.message);
+      certEstado(i, `<span class="err">⚠️ ${certEsc(e.message)}</span>`);
+    }
+  }
+
+  bar.style.width = "100%";
+  txt.textContent = "Listo: " + ok + " certificado(s) guardado(s)" + (errores.length ? ", " + errores.length + " con error." : ".");
+  btn.disabled = false; certOcupado = false;
+  toast(ok + " certificado(s) generado(s) ✓" + (errores.length ? " · " + errores.length + " con error" : ""), errores.length > 0 && ok === 0);
+  if (errores.length) alert("No se pudieron generar:\n\n" + errores.join("\n"));
+}
+
 // ══════════════════════════════════════════
 //  RESET EXAMEN
 // ══════════════════════════════════════════
