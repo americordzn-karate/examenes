@@ -425,6 +425,13 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
     </div>
     <div id="cert-wrap" style="margin-top:1rem"></div>
   </div>
+
+  <h2 class="stitle">🖨️ Certificados para impresión</h2>
+  <div class="card">
+    <p style="font-size:.84rem;color:var(--ink3);margin-bottom:.75rem">Genera <strong>antes del examen</strong> el certificado de los candidatos, suponiendo que aprueban (grado actual → siguiente), para imprimirlos. Descarga un PDF por alumno; <strong>no</strong> se guarda en Drive ni se modifica Grados_Historial. Los alumnos que llegarían a grado Dan no se incluyen.</p>
+    <button class="btn btn-dark" onclick="cargarCertPrevios()">📋 Cargar candidatos del examen</button>
+    <div id="prev-wrap" style="margin-top:1rem"></div>
+  </div>
 </section>
 
 <!-- ══════════════════════════════════════════
@@ -2679,6 +2686,154 @@ async function generarCertificados() {
   txt.textContent = "Listo: " + ok + " certificado(s) guardado(s)" + (errores.length ? ", " + errores.length + " con error." : ".");
   btn.disabled = false; certOcupado = false;
   toast(ok + " certificado(s) generado(s) ✓" + (errores.length ? " · " + errores.length + " con error" : ""), errores.length > 0 && ok === 0);
+  if (errores.length) alert("No se pudieron generar:\n\n" + errores.join("\n"));
+}
+
+
+// ══════════════════════════════════════════
+//  CERTIFICADOS PARA IMPRESIÓN (antes del examen; solo descarga local)
+// ══════════════════════════════════════════
+let certPrev = null;
+let certPrevOcupado = false;
+
+// Grado actual del candidato → grado kyu que tendría al aprobar (0 = Dan / sin diseño)
+function previoNuevoKyu(g) {
+  const n = typeof g === "number" ? g : parseInt(String(g).replace(/\D/g, ""), 10);
+  if (typeof g !== "number" && /dan/i.test(String(g))) return 0;
+  if (!n || n < 2 || n > 10) return 0;
+  return n - 1;
+}
+
+async function cargarCertPrevios() {
+  const wrap = document.getElementById("prev-wrap");
+  wrap.innerHTML = '<div class="loader">Cargando candidatos…</div>';
+  try {
+    const r = await get("getCandidatosCertificados", { token: tokenActual });
+    if (!r.fecha) { wrap.innerHTML = '<div class="loader">No hay un examen programado de hoy en adelante.</div>'; return; }
+    certPrev = r;
+    r.items = r.candidatos.map(c => ({ c: c, kyu: previoNuevoKyu(c.grado) }));
+    r.items.sort((a, b) => {
+      const ka = a.kyu || -1, kb = b.kyu || -1;                 // sin diseño al final
+      if ((ka > 0) !== (kb > 0)) return ka > 0 ? -1 : 1;
+      return (kb - ka) || a.c.nombre.localeCompare(b.c.nombre, "es");   // 9 Kyu primero … 1 Kyu al final
+    });
+    wrap.innerHTML = buildCertPrevios(r);
+  } catch (e) {
+    wrap.innerHTML = `<div class="loader err">Error: ${certEsc(e.message)}</div>`;
+  }
+}
+
+function buildCertPrevios(r) {
+  if (!r.items.length) return '<div class="loader">No hay candidatos registrados para este examen.</div>';
+  const est = { primavera: "Primavera 春", verano: "Verano 夏", otono: "Otoño 秋", invierno: "Invierno 冬" }[certEstacion(r.fecha)];
+  let h = `<p style="font-size:.8rem;color:var(--ink3);margin-bottom:.6rem">Examen del <strong>${certEsc(certFechaTexto(r.fecha))}</strong> · Kanji de estación: <strong>${est}</strong> · Orden: grado ascendente</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th style="width:34px"></th><th>Alumno</th><th>Grado actual</th><th>Grado del certificado</th><th>Katakana</th><th style="width:46px"></th></tr></thead><tbody>`;
+  r.items.forEach((it, i) => {
+    const c = it.c, ok = it.kyu > 0;
+    const actual = typeof c.grado === "number" ? c.grado + " Kyu" : certEsc(c.grado);
+    const opciones = [9, 8, 7, 6, 5, 4, 3, 2, 1].map(k =>
+      `<option value="${k}"${k === it.kyu ? " selected" : ""}>${certEsc(certGradoPlano(certGradoSegmentos(k + " kyu")))}</option>`).join("");
+    h += `<tr>
+      <td><input type="checkbox" id="prev-chk-${i}" style="width:17px;height:17px;accent-color:var(--red)" ${ok ? "checked" : "disabled"}/></td>
+      <td>${certEsc(certNombreTitulo(c.nombre))}</td>
+      <td>${actual}</td>
+      <td>${ok ? `<select id="prev-gr-${i}" style="border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-family:var(--font);font-size:.84rem">${opciones}</select>` : '<span style="color:var(--ink3)">Sin diseño (grado Dan)</span>'}</td>
+      <td><input type="text" id="prev-kata-${i}" value="${certEsc(c.katakana)}" placeholder="Falta katakana" ${ok ? "" : "disabled"}
+        oninput="this.style.borderColor=this.value.trim()?'var(--border)':'var(--red)'"
+        style="border:1px solid ${c.katakana ? "var(--border)" : "var(--red)"};border-radius:5px;padding:5px 8px;width:190px;font-size:.84rem;font-family:'Meiryo','Yu Gothic',sans-serif"/></td>
+      <td>${ok ? `<button class="btn btn-ghost" style="padding:4px 9px" title="Vista previa" onclick="previoVistaPrevia(${i})">👁</button>` : ""}</td>
+    </tr>`;
+  });
+  h += `</tbody></table></div>
+  <div id="prev-prog-wrap" style="display:none;margin-top:.9rem">
+    <div style="height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden"><div id="prev-prog-bar" style="height:100%;width:0%;background:var(--gold);transition:width .25s"></div></div>
+    <div id="prev-prog-txt" style="font-size:.8rem;color:var(--ink3);margin-top:6px"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-red" id="btn-prev-gen" onclick="generarCertPrevios()">🖨️ Descargar PDF de los seleccionados</button>
+    <button class="btn btn-ghost" onclick="previoSeleccionar(true)">Seleccionar todos</button>
+    <button class="btn btn-ghost" onclick="previoSeleccionar(false)">Ninguno</button>
+  </div>
+  <p style="font-size:.76rem;color:var(--ink3);margin-top:.6rem">El navegador puede pedir permiso para descargar varios archivos; acéptelo. Los archivos llevan un número para conservar el orden.</p>`;
+  return h;
+}
+
+function previoSeleccionar(v) {
+  certPrev.items.forEach((it, i) => {
+    const c = document.getElementById("prev-chk-" + i);
+    if (c && !c.disabled) c.checked = v;
+  });
+}
+
+function previoDatos(i) {
+  return {
+    nombre: certPrev.items[i].c.nombre,
+    katakana: document.getElementById("prev-kata-" + i).value,
+    grado: document.getElementById("prev-gr-" + i).value + " kyu",
+    fechaISO: certPrev.fecha
+  };
+}
+
+async function previoVistaPrevia(i) {
+  try {
+    toast("Generando vista previa…");
+    const cv = await certRender(previoDatos(i));
+    document.getElementById("modal-cert-titulo").textContent = certNombreTitulo(certPrev.items[i].c.nombre);
+    document.getElementById("modal-cert-img").src = cv.toDataURL("image/jpeg", 0.85);
+    document.getElementById("modal-cert").style.display = "flex";
+  } catch (e) {
+    toast("Error: " + e.message, true);
+  }
+}
+
+function certDescargar(b64, nombreArchivo) {
+  const bin = atob(b64), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const url = URL.createObjectURL(new Blob([u8], { type: "application/pdf" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = nombreArchivo;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+async function generarCertPrevios() {
+  if (certPrevOcupado || !certPrev) return;
+  const idx = [];
+  certPrev.items.forEach((it, i) => {
+    const c = document.getElementById("prev-chk-" + i);
+    if (c && c.checked && !c.disabled) idx.push(i);
+  });
+  if (!idx.length) { toast("Seleccione al menos un alumno.", true); return; }
+  const sinKata = idx.filter(i => !document.getElementById("prev-kata-" + i).value.trim());
+  if (sinKata.length && !confirm(sinKata.length + " alumno(s) no tienen katakana; su certificado se generará SIN esa línea.\n\n¿Desea continuar?")) return;
+  if (!confirm("Se descargarán " + idx.length + " PDF para impresión.\nNo se guardará nada en Drive ni en Grados_Historial.\n\n¿Desea continuar?")) return;
+
+  certPrevOcupado = true;
+  const btn = document.getElementById("btn-prev-gen");
+  const wrap = document.getElementById("prev-prog-wrap"), bar = document.getElementById("prev-prog-bar"), txt = document.getElementById("prev-prog-txt");
+  btn.disabled = true; wrap.style.display = "block";
+  let ok = 0;
+  const errores = [];
+  for (let n = 0; n < idx.length; n++) {
+    const i = idx[n], d = previoDatos(i), nombre = certNombreTitulo(d.nombre);
+    bar.style.width = Math.round(n / idx.length * 100) + "%";
+    txt.textContent = "Generando " + (n + 1) + " de " + idx.length + ": " + nombre;
+    try {
+      const cv = await certRender(d);
+      const pdf = certPDFBase64(cv, "Certificado - " + nombre);
+      const archivo = String(n + 1).padStart(2, "0") + "_" + nombre.replace(/[\\\/:*?"<>|]/g, "").replace(/\s+/g, "_") + "_" + parseInt(d.grado, 10) + "Kyu.pdf";
+      certDescargar(pdf, archivo);
+      ok++;
+      await new Promise(r => setTimeout(r, 450));
+    } catch (e) {
+      errores.push(nombre + ": " + e.message);
+    }
+  }
+  bar.style.width = "100%";
+  txt.textContent = "Listo: " + ok + " PDF descargado(s)" + (errores.length ? ", " + errores.length + " con error." : ".");
+  btn.disabled = false; certPrevOcupado = false;
+  toast(ok + " PDF descargado(s) ✓", errores.length > 0 && ok === 0);
   if (errores.length) alert("No se pudieron generar:\n\n" + errores.join("\n"));
 }
 
