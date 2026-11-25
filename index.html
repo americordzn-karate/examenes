@@ -2280,7 +2280,9 @@ const CERT = {
   NOMBRE:  { fuente:"CertBerlin", size:71.08, cx:671.2, base:1036, max:820 },
   KATAKANA:{ fuente:"CertMeiryo", size:36.34, cx:671.2, base:1077, max:820, color:"#272727" },
   GRADO:   { fuente:"CertBerlin", size:66.0,  cx:664.0, base:1192, max:900, supEscala:0.40, supSube:15 },
-  FECHA:   { fuente:"CertBerlin", size:26.68, cx:678.4, base:1273, max:700 }
+  FECHA:   { fuente:"CertBerlin", size:26.68, cx:678.4, base:1273, max:700 },
+  // Folio: rojo, alineado a la derecha. right = borde derecho del texto (1275 - 177 px = 3 cm del margen); base = línea base
+  FOLIO:   { fuente:"CertBerlin", size:16, right:1098, base:1440, color:"#d40000" }
 };
 
 // Grado obtenido → [número, cinta, superíndice]
@@ -2483,6 +2485,12 @@ async function certRender(d) {
   if (kata) certTextoAjustado(c, kata, CERT.KATAKANA, CERT.KATAKANA.color);
   certGradoLinea(c, segs, "#000000");
   certTextoAjustado(c, certFechaTexto(d.fechaISO), CERT.FECHA, "#000000");
+  if (d.folio) {
+    const FO = CERT.FOLIO;
+    c.font = FO.size + "px " + FO.fuente; c.fillStyle = FO.color;
+    c.textAlign = "right"; c.textBaseline = "alphabetic";
+    c.fillText("Folio: " + d.folio, FO.right, FO.base);
+  }
   c.restore();
   return cv;
 }
@@ -2520,6 +2528,7 @@ async function cargarCertificados(examenId) {
       `<option value="${certEsc(e.id)}"${e.id === r.examenId ? " selected" : ""}>${certEsc(certFechaCorta(e.fecha))} · ${certEsc(e.id)}</option>`
     ).join("");
     wrap.innerHTML = buildCertificados(r);
+    if (r.avisos && r.avisos.length) alert(r.avisos.join("\n\n"));
   } catch (e) {
     wrap.innerHTML = `<div class="loader err">Error: ${certEsc(e.message)}</div>`;
   }
@@ -2533,7 +2542,7 @@ function buildCertificados(r) {
   const estTxt = { primavera: "Primavera 春", verano: "Verano 夏", otono: "Otoño 秋", invierno: "Invierno 冬" }[est];
   let h = `<p style="font-size:.8rem;color:var(--ink3);margin-bottom:.6rem">Examen del <strong>${certEsc(certFechaTexto(r.fecha))}</strong> · Kanji de estación: <strong>${estTxt}</strong></p>
   <div class="tbl-wrap"><table>
-    <thead><tr><th style="width:34px"></th><th>Alumno</th><th>Nuevo grado</th><th>Calif.</th><th>Katakana</th><th>Certificado</th><th style="width:46px"></th></tr></thead><tbody>`;
+    <thead><tr><th style="width:34px"></th><th>Alumno</th><th>Nuevo grado</th><th>Calif.</th><th>Folio</th><th>Katakana</th><th>Certificado</th><th style="width:46px"></th></tr></thead><tbody>`;
   r.alumnos.forEach((a, i) => {
     const info = certGradoSegmentos(a.grado, "dan");
     const esDan1 = certDanNum(a.grado) === 1;
@@ -2549,6 +2558,7 @@ function buildCertificados(r) {
       <td>${certEsc(certNombreTitulo(a.nombre))}</td>
       <td>${gradoTxt}</td>
       <td>${certEsc(Number(a.calificacion).toFixed(2))}</td>
+      <td style="white-space:nowrap">${certEsc(a.folio || "—")}</td>
       <td><input type="text" id="cert-kata-${i}" value="${certEsc(a.katakana)}" placeholder="Falta katakana" ${info ? "" : "disabled"}
         oninput="this.style.borderColor=this.value.trim()?'var(--border)':'var(--red)'"
         style="border:1px solid ${faltaKata ? "var(--red)" : "var(--border)"};border-radius:5px;padding:5px 8px;width:190px;font-size:.84rem;font-family:'Meiryo','Yu Gothic',sans-serif"/></td>
@@ -2595,6 +2605,7 @@ function certDatosAlumno(i) {
     katakana: document.getElementById("cert-kata-" + i).value,
     variante: (document.getElementById("cert-var-" + i) || {}).value || "",
     grado: a.grado,
+    folio: a.folio || "",
     fechaISO: certDatos.fecha
   };
 }
@@ -2718,6 +2729,7 @@ async function cargarCertPrevios() {
       return (kb - ka) || a.c.nombre.localeCompare(b.c.nombre, "es");   // 9 Kyu primero … 1 Kyu al final
     });
     wrap.innerHTML = buildCertPrevios(r);
+    if (r.avisos && r.avisos.length) alert(r.avisos.join("\n\n"));
   } catch (e) {
     wrap.innerHTML = `<div class="loader err">Error: ${certEsc(e.message)}</div>`;
   }
@@ -2728,7 +2740,7 @@ function buildCertPrevios(r) {
   const est = { primavera: "Primavera 春", verano: "Verano 夏", otono: "Otoño 秋", invierno: "Invierno 冬" }[certEstacion(r.fecha)];
   let h = `<p style="font-size:.8rem;color:var(--ink3);margin-bottom:.6rem">Examen del <strong>${certEsc(certFechaTexto(r.fecha))}</strong> · Kanji de estación: <strong>${est}</strong> · Orden: grado ascendente</p>
   <div class="tbl-wrap"><table>
-    <thead><tr><th style="width:34px"></th><th style="width:34px">#</th><th>Alumno</th><th>Grado actual</th><th>Grado del certificado</th><th>Katakana</th><th style="text-align:center">Con firma</th><th style="width:46px"></th></tr></thead><tbody>`;
+    <thead><tr><th style="width:34px"></th><th style="width:34px">#</th><th>Alumno</th><th>Grado actual</th><th>Grado del certificado</th><th>Folio</th><th>Katakana</th><th style="text-align:center">Con firma</th><th style="width:46px"></th></tr></thead><tbody>`;
   r.items.forEach((it, i) => {
     const c = it.c, ok = it.kyu > 0;
     const actual = typeof c.grado === "number" ? c.grado + " Kyu" : certEsc(c.grado);
@@ -2740,6 +2752,7 @@ function buildCertPrevios(r) {
       <td>${certEsc(certNombreTitulo(c.nombre))}</td>
       <td>${actual}</td>
       <td>${ok ? `<select id="prev-gr-${i}" style="border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-family:var(--font);font-size:.84rem">${opciones}</select>` : '<span style="color:var(--ink3)">Sin diseño (grado Dan)</span>'}</td>
+      <td style="white-space:nowrap">${certEsc(c.folio || "—")}</td>
       <td><input type="text" id="prev-kata-${i}" value="${certEsc(c.katakana)}" placeholder="Falta katakana" ${ok ? "" : "disabled"}
         oninput="this.style.borderColor=this.value.trim()?'var(--border)':'var(--red)'"
         style="border:1px solid ${c.katakana ? "var(--border)" : "var(--red)"};border-radius:5px;padding:5px 8px;width:190px;font-size:.84rem;font-family:'Meiryo','Yu Gothic',sans-serif"/></td>
@@ -2774,6 +2787,7 @@ function previoDatos(i) {
     katakana: document.getElementById("prev-kata-" + i).value,
     grado: document.getElementById("prev-gr-" + i).value + " kyu",
     firma: !!document.getElementById("prev-firma-" + i).checked,
+    folio: certPrev.items[i].c.folio || "",
     fechaISO: certPrev.fecha
   };
 }
