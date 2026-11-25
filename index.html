@@ -290,6 +290,8 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
       Entrar
     </button>
 
+    <button id="btn-bio" type="button" onclick="bioEntrar()" style="display:none;background:#fff;color:#111827;border:1px solid #111827">👆 Entrar con huella</button>
+
     <!-- Barra de progreso -->
     <div id="login-progress-wrap" style="display:none;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden">
       <div id="login-progress-bar" style="height:100%;width:0%;background:#b8860b;border-radius:3px;transition:width .3s ease"></div>
@@ -310,6 +312,7 @@ tbody td{padding:7px 11px;border-bottom:1px solid #eee;vertical-align:middle}
     <button id="nb-alumnos" onclick="showView('v-alumnos')" style="display:none">🥋</button>
     <button id="nb-config" onclick="showView('v-config')" style="display:none">⚙️</button>
         <button id="nb-qr" onclick="abrirModalQR()" style="display:none">📱</button>
+    <button id="nb-bio" onclick="bioActivar()" style="display:none" title="Activar ingreso con huella">👆</button>
   </nav>
 </header>
 
@@ -1545,11 +1548,12 @@ async function toggleAsistencia(grupo, numero, presente){
   });
 })();
 
-  async function loginToken(){
+  async function loginToken(tokenOverride){
 
   const inputEl = document.getElementById("token-real");
   // Usar el valor real interceptado; fallback al hidden por compatibilidad
-  const rawToken = (inputEl && inputEl._getTokenReal)
+  const rawToken = (typeof tokenOverride === "string") ? tokenOverride
+    : (inputEl && inputEl._getTokenReal)
     ? inputEl._getTokenReal()
     : (document.getElementById("token-input").value || "");
 
@@ -1629,6 +1633,7 @@ async function toggleAsistencia(grupo, numero, presente){
 
     aplicarPermisos();
     await iniciarSistema();
+    bioPostLogin();
 
   }catch(e){
     console.error(e);
@@ -2888,6 +2893,161 @@ async function ejecutarResetExamen() {
     btn.textContent = "🗑️ Sí, limpiar todo";
   }
 }
+
+// ══════════════════════════════════════════
+//  INGRESO CON HUELLA (WebAuthn)
+//  El token se guarda en este dispositivo. Si el navegador soporta la extensión PRF,
+//  se cifra con una clave que solo se obtiene con la huella; si no, la huella actúa
+//  como puerta de acceso (modo "simple").
+// ══════════════════════════════════════════
+const BIO_NS  = "k_bio_" + location.pathname.replace(/[^a-z0-9]/gi, "_") + "_";
+const BIO_SAL = new TextEncoder().encode("senshikan-token-v1");
+
+function bioB64(buf) { let s = ""; new Uint8Array(buf).forEach(b => s += String.fromCharCode(b)); return btoa(s); }
+function bioDeB64(t) { const s = atob(t), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+function bioLeer()   { try { return JSON.parse(localStorage.getItem(BIO_NS + "datos") || "null"); } catch (e) { return null; } }
+function bioGuardar(d) { try { localStorage.setItem(BIO_NS + "datos", JSON.stringify(d)); } catch (e) {} }
+function bioBorrar() { try { localStorage.removeItem(BIO_NS + "datos"); } catch (e) {} bioActualizarUI(); }
+
+async function bioSoportado() {
+  try {
+    return !!(window.PublicKeyCredential && window.isSecureContext && navigator.credentials &&
+      await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+  } catch (e) { return false; }
+}
+
+async function bioCifrar(clave, texto) {
+  const k  = await crypto.subtle.importKey("raw", clave, "AES-GCM", false, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, k, new TextEncoder().encode(texto));
+  const out = new Uint8Array(12 + ct.byteLength);
+  out.set(iv, 0); out.set(new Uint8Array(ct), 12);
+  return bioB64(out);
+}
+async function bioDescifrar(clave, b64) {
+  const d  = bioDeB64(b64);
+  const k  = await crypto.subtle.importKey("raw", clave, "AES-GCM", false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: d.slice(0, 12) }, k, d.slice(12));
+  return new TextDecoder().decode(pt);
+}
+
+// Verificación biométrica con la credencial registrada; con PRF devuelve la clave de cifrado
+async function bioVerificar(credId, conPRF) {
+  const opc = {
+    challenge: crypto.getRandomValues(new Uint8Array(32)),
+    allowCredentials: [{ type: "public-key", id: bioDeB64(credId), transports: ["internal"] }],
+    userVerification: "required",
+    timeout: 60000
+  };
+  if (conPRF) opc.extensions = { prf: { eval: { first: BIO_SAL } } };
+  const r = await navigator.credentials.get({ publicKey: opc });
+  if (!conPRF) return null;
+  const e = r.getClientExtensionResults ? r.getClientExtensionResults() : {};
+  return (e.prf && e.prf.results && e.prf.results.first) ? new Uint8Array(e.prf.results.first) : null;
+}
+
+function bioActualizarUI() {
+  const b = document.getElementById("nb-bio");
+  if (b) {
+    const on = !!bioLeer();
+    b.textContent = on ? "👆✓" : "👆";
+    b.title = on ? "Ingreso con huella activado (clic para desactivar)" : "Activar ingreso con huella";
+  }
+  bioInicioLogin();
+}
+
+// Muestra el botón de la pantalla de ingreso si ya hay una huella registrada
+async function bioInicioLogin() {
+  const btn = document.getElementById("btn-bio");
+  if (!btn) return;
+  btn.style.display = (bioLeer() && await bioSoportado()) ? "" : "none";
+}
+
+// Activa (o desactiva, si ya estaba activa) el ingreso con huella en este dispositivo
+async function bioActivar() {
+  if (bioLeer()) {
+    if (confirm("¿Desactivar el ingreso con huella en este dispositivo?")) {
+      bioBorrar();
+      toast("Ingreso con huella desactivado");
+    }
+    return;
+  }
+  if (!tokenActual) { toast("Ingrese primero con su token.", true); return; }
+  try {
+    const nombre = String((usuarioActual && usuarioActual.nombre) || "Sinodal");
+    const cred = await navigator.credentials.create({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: "Sistema de Evaluaciones Senshi-Kan" },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: nombre, displayName: nombre },
+      pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "discouraged" },
+      timeout: 60000,
+      extensions: { prf: { eval: { first: BIO_SAL } } }
+    }});
+    const credId = bioB64(cred.rawId);
+    const ext = cred.getClientExtensionResults ? cred.getClientExtensionResults() : {};
+    let clave = (ext.prf && ext.prf.results && ext.prf.results.first) ? new Uint8Array(ext.prf.results.first) : null;
+    if (!clave && ext.prf && ext.prf.enabled) clave = await bioVerificar(credId, true);   // segundo toque de huella
+    if (clave) bioGuardar({ modo: "prf", id: credId, t: await bioCifrar(clave, tokenActual) });
+    else       bioGuardar({ modo: "simple", id: credId, t: bioB64(new TextEncoder().encode(tokenActual)) });
+    try { localStorage.removeItem(BIO_NS + "no"); } catch (e) {}
+    bioActualizarUI();
+    toast("Ingreso con huella activado ✓");
+  } catch (e) {
+    console.error(e);
+    toast(e && e.name === "NotAllowedError" ? "Activación cancelada." : "No se pudo activar la huella.", true);
+  }
+}
+
+// Ingreso desde la pantalla de login
+async function bioEntrar() {
+  const d = bioLeer();
+  if (!d) return;
+  const msg = document.getElementById("login-msg");
+  msg.textContent = "";
+  try {
+    let token;
+    if (d.modo === "prf") {
+      const clave = await bioVerificar(d.id, true);
+      if (!clave) throw new Error("PRF no disponible");
+      token = await bioDescifrar(clave, d.t);
+    } else {
+      await bioVerificar(d.id, false);
+      token = new TextDecoder().decode(bioDeB64(d.t));
+    }
+    await loginToken(token);
+    if (!usuarioActual && msg.textContent === "Token inválido") {
+      bioBorrar();
+      msg.textContent = "El token cambió. Ingrese con su token y active la huella de nuevo.";
+    }
+  } catch (e) {
+    console.error(e);
+    msg.textContent = (e && e.name === "NotAllowedError")
+      ? "Verificación cancelada."
+      : "No se pudo usar la huella. Ingrese con su token.";
+  }
+}
+
+// Después de ingresar: muestra el botón de la barra y ofrece activar la huella (una sola vez)
+async function bioPostLogin() {
+  try {
+    if (!(await bioSoportado())) return;
+    const b = document.getElementById("nb-bio");
+    if (b) b.style.display = "";
+    bioActualizarUI();
+    let rechazado = false;
+    try { rechazado = !!localStorage.getItem(BIO_NS + "no"); } catch (e) {}
+    if (!bioLeer() && !rechazado) {
+      if (confirm("¿Desea activar el ingreso con huella en este dispositivo?")) {
+        bioActivar();
+      } else {
+        try { localStorage.setItem(BIO_NS + "no", "1"); } catch (e) {}
+      }
+    }
+  } catch (e) { console.error(e); }
+}
+
+bioInicioLogin();
 
 </script>
 </body>
